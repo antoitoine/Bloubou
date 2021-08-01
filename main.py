@@ -6,6 +6,10 @@
 
 import discord
 import textComputing as tc
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 #############
@@ -13,7 +17,6 @@ import textComputing as tc
 #############
 
 
-TOKEN = "ODcxMTQ1NDY5OTgyNjcwOTA4.YQXDcQ.mXCu5XgVRbakJfLwI8NF6-O3NoA"
 ADMIN_ID = 393762112884965389
 
 MESSAGES = ["[DEB]", "[CMD]", "[ERR]", "[MSG]", "[BOT]", "[MSC]"]
@@ -78,4 +81,4 @@ class Bloubou(discord.Client):
 
 
 bot = Bloubou()
-bot.run(TOKEN)
+bot.run(os.getenv("TOKEN"))
