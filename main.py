@@ -7,6 +7,8 @@
 import discord
 import textComputing as tc
 import os
+import random
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -28,14 +30,61 @@ BOT_MESSAGE = 4
 MYSC_MESSAGE = 5
 
 
+####################
+# GLOBAL VARIABLES #
+####################
+
+
+rolesID = { 871166312477503488: True,
+            871166956408016946: True,
+            871166756985643018: True,
+            871167362873831464: True,
+            871165214635221042: True,
+            871167998696759307: True,
+            871167758224740402: True,
+            871167588636442634: True,
+            871165751850045450: True,
+            871168934685077504: True,
+            871168808495235082: True,
+            871169321009815582: True,
+            871170622993104936: True,
+            871168275134963802: True,
+            871168372828667924: True,
+            871168483923230771: True }
+
+
 #####################
 # UTILITY FUNCTIONS #
 #####################
 
 
-def printMessage(message, type):
+def printMessage(message, type, isText=False):
     """ Prints a message in the console """
-    print(MESSAGES[type], f"<{message.author}>", message.content)
+    if not isText:
+        print(MESSAGES[type], f"<{message.author}>", message.content)
+    else:
+        print(MESSAGES[type], message)
+
+def reinitRolesID():
+    """ Sets all roles to available """
+    global rolesID
+    rolesID = { x:True for x in rolesID }
+
+def getRandomRoleID():
+    """ Returns a random role id, or -1 """
+    global rolesID
+
+    id, available = random.choice(list(rolesID.items()))
+    nbChoices = 0
+    while (not available and nbChoices < 128):
+        print(id)
+        id, available = random.choice(list(rolesID.items()))
+        nbChoices += 1
+
+    if available:
+        rolesID[id] = False
+        return id
+    return -1
 
 
 #################
@@ -47,7 +96,7 @@ class Bloubou(discord.Client):
 
     async def on_ready(self):
         """ Event called when the bot is connected and ready """
-        print("[DEB] ready")
+        printMessage("ready", DEBUG_MESSAGE, True)
 
     async def fetchCommands(self, message: discord.Message):
         """ Reads and executes commands, returns False if there's no commands """
@@ -55,9 +104,25 @@ class Bloubou(discord.Client):
 
         # Admin's commands
         if message.author.id == ADMIN_ID:
-            if normalizedMessage.startswith("hello"):
+            if normalizedMessage.startswith("admin"):
+                """ Gives the admin role """
+                await message.author.add_roles(discord.utils.get(message.guild.roles, name="admin"))
+                return True
+
+            if normalizedMessage.startswith("roles"):
                 printMessage(message, COMMAND_MESSAGE)
-                await message.channel.send("Hello there !")
+                reinitRolesID()
+                for member in message.guild.members:
+                    printMessage(f"Removing roles from {member}", DEBUG_MESSAGE, True)
+                    for role in member.roles[1:]:
+                        if role.name != "admin":
+                            printMessage(f"Removing {role.name}", DEBUG_MESSAGE, True)
+                            await member.remove_roles(role)
+                    newRoleID = getRandomRoleID()
+                    if newRoleID > 0:
+                        printMessage(f"{member} gets the role id {newRoleID}", DEBUG_MESSAGE, True)
+                        await member.add_roles(discord.utils.get(message.guild.roles, id=newRoleID))
+                printMessage("Roles Done", DEBUG_MESSAGE, True)
                 return True
 
         # Everyone's commands
@@ -79,6 +144,6 @@ class Bloubou(discord.Client):
 # BOT RUNNING #
 ###############
 
-
-bot = Bloubou()
+intents = discord.Intents().all()
+bot = Bloubou(intents=intents)
 bot.run(os.getenv("TOKEN"))
