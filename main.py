@@ -5,11 +5,15 @@
 
 
 import discord
-import textComputing as tc
 import os
 import random
+import re
 
+import textComputing as tc
+
+from myUtilities import *
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
@@ -20,14 +24,19 @@ load_dotenv()
 
 
 ADMIN_ID = 393762112884965389
+BLOUBOU_ID = 871145469982670908
 
-MESSAGES = ["[DEB]", "[CMD]", "[ERR]", "[MSG]", "[BOT]", "[MSC]"]
-DEBUG_MESSAGE = 0
-COMMAND_MESSAGE = 1
-ERROR_MESSAGE = 2
-USER_MESSAGE = 3
-BOT_MESSAGE = 4
-MYSC_MESSAGE = 5
+BLOUBOU_GUILD_ID = 871155691686088714
+
+ADMIN_ROLE_ID = 871159748135895130
+BOT_ROLE_ID = 871356162757509180
+
+CONSTANT_ROLES_NAMES = ["admin", "bot"]
+
+REG_CHANGE_NAME = r"(?:change[r|s]?|modifie[s|r]?|transforme[s|r]?) (?:(?:le )?(?:nom|pseudo|pr(?:é|e|è)nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)"
+
+ID_ALIASES = {393762112884965389: ["antoine", "tatane", "antoinette"],
+              871145469982670908: ["bloubou"]}
 
 
 ####################
@@ -52,18 +61,12 @@ rolesID = { 871166312477503488: True,
             871168372828667924: True,
             871168483923230771: True }
 
-
-#####################
-# UTILITY FUNCTIONS #
-#####################
+bloubouGuild: discord.Guild
 
 
-def printMessage(message, type, isText=False):
-    """ Prints a message in the console """
-    if not isText:
-        print(MESSAGES[type], f"<{message.author}>", message.content)
-    else:
-        print(MESSAGES[type], message)
+###################
+# GUILD FUNCTIONS #
+###################
 
 def reinitRolesID():
     """ Sets all roles to available """
@@ -71,7 +74,7 @@ def reinitRolesID():
     rolesID = { x:True for x in rolesID }
 
 def getRandomRoleID():
-    """ Returns a random role id, or -1 """
+    """ Returns a random role id, or -1 if there is no available """
     global rolesID
 
     id, available = random.choice(list(rolesID.items()))
@@ -86,6 +89,43 @@ def getRandomRoleID():
         return id
     return -1
 
+def getRoleByID(id):
+    """ Searchs a role by his id """
+    return discord.utils.get(bloubouGuild.roles, id=id)
+
+def getUserByID(id):
+    """ Searchs a user by his id """
+    return bloubouGuild.get_member(id)
+
+def getUserByName(n):
+    """ Searchs a user by his name """
+    name = tc.normalize(n)
+    for user in bloubouGuild.members:
+        if tc.normalize(user.name) == name or tc.normalize(user.nick or "") == name or name in ID_ALIASES[user.id]:
+            return user
+    return None
+
+
+######################
+# COMMANDS FUNCTIONS #
+######################
+
+
+def checkCommand(input):
+    normInput = tc.normalize(input)
+
+    file = open("commandPatterns.txt", 'w')
+
+    for line in file.readlines():
+        commandName = line[0]
+        iInput = 0
+        for word in line[1:]:
+            if word == input[iInput]:
+                iInput += 1
+                continue
+
+    file.close()
+
 
 #################
 # BLOUBOU CLASS #
@@ -97,36 +137,47 @@ class Bloubou(discord.Client):
     async def on_ready(self):
         """ Event called when the bot is connected and ready """
         printMessage("ready", DEBUG_MESSAGE, True)
+        global bloubouGuild
+        bloubouGuild = self.get_guild(BLOUBOU_GUILD_ID)
 
     async def fetchCommands(self, message: discord.Message):
-        """ Reads and executes commands, returns False if there's no commands """
+        """ Reads and executes commands, returns False if no command found """
         normalizedMessage = tc.normalize(message.content)
+        commandFound = False
+
+        # [COMMAND] - Change name
+        resultChangeName = re.search(REG_CHANGE_NAME, message.content, re.IGNORECASE)
+        if resultChangeName != None:
+            args = resultChangeName.groupdict()
+            user = getUserByName(args["last"])
+            if user != None:
+                await user.edit(nick=args["new"])
+                commandFound = True
 
         # Admin's commands
         if message.author.id == ADMIN_ID:
-            if normalizedMessage.startswith("admin"):
-                """ Gives the admin role """
-                await message.author.add_roles(discord.utils.get(message.guild.roles, name="admin"))
-                return True
-
             if normalizedMessage.startswith("roles"):
-                printMessage(message, COMMAND_MESSAGE)
+                """ Distributes random role to everyone """
                 reinitRolesID()
                 for member in message.guild.members:
                     printMessage(f"Removing roles from {member}", DEBUG_MESSAGE, True)
                     for role in member.roles[1:]:
-                        if role.name != "admin":
+                        if role.name not in CONSTANT_ROLES_NAMES:
                             printMessage(f"Removing {role.name}", DEBUG_MESSAGE, True)
                             await member.remove_roles(role)
                     newRoleID = getRandomRoleID()
                     if newRoleID > 0:
                         printMessage(f"{member} gets the role id {newRoleID}", DEBUG_MESSAGE, True)
                         await member.add_roles(discord.utils.get(message.guild.roles, id=newRoleID))
+                    else:
+                        printMessage(f"There is no role available", ERROR_MESSAGE, True)
                 printMessage("Roles Done", DEBUG_MESSAGE, True)
-                return True
+                commandFound = True
 
-        # Everyone's commands
-        return False
+        if commandFound:
+            printMessage(message, COMMAND_MESSAGE)
+
+        return commandFound
 
     async def on_message(self, message: discord.Message):
         """ Event called when a message is read """
