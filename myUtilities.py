@@ -23,9 +23,9 @@ MYSC_MESSAGE = 5
 #############
 
 
-def printMessage(message, type, isText=False):
+def printMessage(message, messageType, isText=False):
     """ Prints a message in the console """
     if not isText:
-        print(MESSAGES[type], f"<{message.author}>", message.content)
+        print(MESSAGES[messageType], f"<{message.author}>", message.content)
     else:
-        print(MESSAGES[type], message)
+        print(MESSAGES[messageType], message)

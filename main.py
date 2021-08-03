@@ -42,28 +42,31 @@ ID_ALIASES = {393762112884965389: ["antoine", "tatane", "antoinette"],
 ####################
 
 
-rolesID = {871166312477503488: True,
-           871166956408016946: True,
-           871166756985643018: True,
-           871167362873831464: True,
-           871165214635221042: True,
-           871167998696759307: True,
-           871167758224740402: True,
-           871167588636442634: True,
-           871165751850045450: True,
-           871168934685077504: True,
-           871168808495235082: True,
-           871169321009815582: True,
-           871170622993104936: True,
-           871168275134963802: True,
-           871168372828667924: True,
-           871168483923230771: True}
+rolesID = {
+    871166312477503488: True,
+    871166956408016946: True,
+    871166756985643018: True,
+    871167362873831464: True,
+    871165214635221042: True,
+    871167998696759307: True,
+    871167758224740402: True,
+    871167588636442634: True,
+    871165751850045450: True,
+    871168934685077504: True,
+    871168808495235082: True,
+    871169321009815582: True,
+    871170622993104936: True,
+    871168275134963802: True,
+    871168372828667924: True,
+    871168483923230771: True
+}
 
 bloubouGuild: discord.Guild
 
 commandRegexes = [
     r"(?:change[r|s]?|modifie[s|r]?|transforme[s|r]?) (?:(?:le )?(?:nom|pseudo|pr(?:é|e|è)nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)",
-    r"^roles$"
+    r"^roles$",
+    r"^stop$"
 ]
 
 
@@ -146,11 +149,20 @@ async def randomRoles(args, message):
     printMessage("Roles Done", DEBUG_MESSAGE, True)
 
 
+async def stopBot(args, message):
+    """ Shutdowns the bot """
+    if message.author.id != ADMIN_ID:
+        return
+
+    await bot.logout()
+
+
 async def callCommand(idCommand, args, message):
     """ Calls the specified idCommand command, or returns False """
     commands = {
         0: changeName,
-        1: randomRoles
+        1: randomRoles,
+        2: stopBot
     }
     command = commands.get(idCommand)
     if command is None:
@@ -173,7 +185,8 @@ class Bloubou(discord.Client):
         global bloubouGuild
         bloubouGuild = self.get_guild(BLOUBOU_GUILD_ID)
 
-    async def fetchCommands(self, message: discord.Message):
+    @classmethod
+    async def fetchCommands(cls, message: discord.Message):
         """ Reads and executes commands, returns False if no command found """
         commandFound = False
 
@@ -182,7 +195,6 @@ class Bloubou(discord.Client):
             if regexResult is not None:
                 args = regexResult.groupdict()
                 commandFound = await callCommand(iCommand, args, message)
-
         return commandFound
 
     async def on_message(self, message: discord.Message):
