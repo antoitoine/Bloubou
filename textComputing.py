@@ -11,6 +11,7 @@ import unicodedata
 # FUNCTIONS #
 #############
 
+
 def normalize(text):
     text = unicodedata.normalize("NFD", text)\
            .encode("ascii", "ignore")\
