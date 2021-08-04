@@ -19,6 +19,8 @@ load_dotenv()
 
 USER_ID_ANTOINE = 393762112884965389
 USER_ID_BLOUBOU = 871145469982670908
+USER_ID_JUGE = 809755685201379339
+USER_ID_MOUETTE = 872447136577507409
 
 SERVER_ID_BLOUBOU = 871155691686088714
 
@@ -52,6 +54,8 @@ async def randomRoles(args, message):
 
     bloubou.reinitRolesID()
     for member in message.guild.members:
+        if member.id in bloubou.getBotsID():
+            continue
         printMessage(f"Removing roles from {member}", DEBUG_MESSAGE, True)
         for role in member.roles[1:]:
             if role.name not in bloubou.getConstantRoles():
@@ -71,7 +75,29 @@ async def stopBot(args, message):
     if message.author.id not in bloubou.getAdminList():
         return
 
-    await bloubou.logout()
+    await bloubou.shutdown()
+
+
+async def giveRole(args, message):
+    role = bloubou.getRoleByID(int(args["roleID"]))
+    user = bloubou.getUserByName(args["user"])
+    await user.add_roles(role)
+
+
+async def changeRoleColor(args, message):
+    role = bloubou.getRoleByID(int(args["roleID"]))
+    await role.edit(colour=discord.Colour(int("0xa53dd4", 16)))
+
+
+async def classement(args, message):
+    with bloubou.getDatabase().cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT * FROM Classement")
+        for row in cursor.fetchall():
+            await message.channel.send(row)
+
+
+async def onReady():
+    bloubou.connectDatabase("localhost", "antoine", "AlVick;2303", "bloubou")
 
 
 #########################
@@ -87,9 +113,20 @@ bloubou.addConstantRole("bot")
 
 bloubou.setAliases(USER_ID_ANTOINE, ["antoine", "tatane", "antoinette"])
 bloubou.setAliases(USER_ID_BLOUBOU, ["bloubou"])
+bloubou.setAliases(USER_ID_JUGE, ["juge", "le juge", "maitre"])
+bloubou.setAliases(USER_ID_MOUETTE, ["mouette", "piaf", "oiseau", "goeland"])
+
+bloubou.addBotID(USER_ID_BLOUBOU)
+bloubou.addBotID(USER_ID_JUGE)
+bloubou.addBotID(USER_ID_MOUETTE)
+
+bloubou.setOnReady(onReady)
 
 bloubou.setCommand(0, randomRoles, r"^roles$")
 bloubou.setCommand(1, changeName, r"(?:change[r|s]?|modifie[s|r]?|transforme[s|r]?) (?:(?:le )?(?:nom|pseudo|pr(?:é|e|è)nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)")
 bloubou.setCommand(2, stopBot, r"^stop$")
+bloubou.setCommand(3, giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)")
+bloubou.setCommand(4, changeRoleColor, r"^colour (?P<roleID>.+)")
+bloubou.setCommand(5, classement, r"classement")
 
 bloubou.run(os.getenv("TOKEN_BLOUBOU"))

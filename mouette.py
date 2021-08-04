@@ -1,3 +1,8 @@
+#######################
+# MOUETTE DISCORD BOT #
+#      03/08/21       #
+#######################
+
 from bot import *
 import discord
 from dotenv import load_dotenv
@@ -14,6 +19,8 @@ load_dotenv()
 
 USER_ID_ANTOINE = 393762112884965389
 USER_ID_BLOUBOU = 871145469982670908
+USER_ID_JUGE = 809755685201379339
+USER_ID_MOUETTE = 872447136577507409
 
 SERVER_ID_BLOUBOU = 871155691686088714
 
@@ -35,10 +42,12 @@ mouette = Bot(intents=intents)
 
 
 async def piou(args, message):
+    """ Answers Cui cui ! """
     await message.channel.send("Cui cui !")
 
 
 async def onVoice(member, before, after):
+    """ Plays seagull song when someone joins mouette channel """
     if member == mouette.user:
         return
 
@@ -62,6 +71,10 @@ async def onVoice(member, before, after):
 
 mouette.setGuildID(SERVER_ID_BLOUBOU)
 mouette.addAdmin(USER_ID_ANTOINE)
+
+mouette.addBotID(USER_ID_BLOUBOU)
+mouette.addBotID(USER_ID_JUGE)
+mouette.addBotID(USER_ID_MOUETTE)
 
 mouette.setVoiceFunction(onVoice)
 mouette.setCommand(0, piou, r"mouette")

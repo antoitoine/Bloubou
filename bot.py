@@ -11,6 +11,7 @@ import re
 import textComputing as tc
 
 from myUtilities import *
+from mysql.connector import connect, Error
 
 
 #############
@@ -46,18 +47,25 @@ class Bot(discord.Client):
         871168372828667924: True,
         871168483923230771: True
     }
+    botsID = []
 
     onVoiceFunction = None
+    onMessageFunction = None
+    onReadyFunction = None
+
+    database = None
 
     # Inherited methods
 
     async def on_ready(self):
         """ Event called when the bot is connected and ready """
         printMessage("ready", DEBUG_MESSAGE, True)
+        if self.onReadyFunction is not None:
+            await self.onReadyFunction()
 
     async def on_message(self, message):
         """ Event called when a message is read """
-        if message.author == self.user:
+        if message.author.id in self.botsID:
             printMessage(message, BOT_MESSAGE)
             return
 
@@ -66,12 +74,17 @@ class Bot(discord.Client):
         else:
             printMessage(message, USER_MESSAGE)
 
+        if self.onMessageFunction is not None:
+            await self.onMessageFunction(message)
+
     async def on_voice_state_update(self, member, before, after):
         if not before.channel and after.channel:
             printMessage(f"Voice channel joined by {member}", MYSC_MESSAGE, True)
         elif before.channel and not after.channel:
             printMessage(f"Voice channel leaved by {member}", MYSC_MESSAGE, True)
-        await self.onVoiceFunction(member, before, after)
+
+        if self.onVoiceFunction is not None:
+            await self.onVoiceFunction(member, before, after)
 
     # Discord methods
 
@@ -92,6 +105,33 @@ class Bot(discord.Client):
         return self.getGuild().get_member(userId)
 
     # Bot methods
+
+    def connectDatabase(self, host, user, password, database):
+        try:
+            self.database = connect(host=host, user=user, password=password, database=database)
+        except Error as e:
+            printMessage(e, ERROR_MESSAGE, True)
+        printMessage(f"Connected to database {database}", DEBUG_MESSAGE, True)
+
+    def disconnectDatabase(self):
+        if self.database is not None:
+            self.database.close()
+            self.database = None
+            printMessage("Disconnected from database", DEBUG_MESSAGE, True)
+        else:
+            printMessage("No database found", ERROR_MESSAGE, True)
+
+    def isDatabaseConnected(self):
+        return self.database is not None
+
+    def getDatabase(self):
+        return self.database
+
+    async def shutdown(self):
+        await self.logout()
+        if self.database is not None:
+            self.database.close()
+            self.database = None
 
     def reinitRolesID(self):
         """ Sets all roles to available """
@@ -142,8 +182,21 @@ class Bot(discord.Client):
 
     # Getters and setters
 
+    def addBotID(self, botID):
+        if botID not in self.botsID:
+            self.botsID.append(botID)
+
+    def getBotsID(self):
+        return self.botsID
+
     def setVoiceFunction(self, foo):
         self.onVoiceFunction = foo
+
+    def setOnMessage(self, foo):
+        self.onMessageFunction = foo
+
+    def setOnReady(self, foo):
+        self.onReadyFunction = foo
 
     def setAliases(self, userId, aliases):
         self.idAliases[userId] = aliases
