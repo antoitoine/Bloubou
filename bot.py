@@ -25,6 +25,9 @@ class Bot(discord.Client):
 
     guildID: int
     commands = []
+
+    loopFunctions = []
+
     regexes = []
     adminUsersID = []
     idAliases = {}
@@ -60,6 +63,10 @@ class Bot(discord.Client):
     async def on_ready(self):
         """ Event called when the bot is connected and ready """
         printMessage("ready", DEBUG_MESSAGE, True)
+
+        for foo in self.loopFunctions:
+            foo.start()
+
         if self.onReadyFunction is not None:
             await self.onReadyFunction()
 
@@ -78,6 +85,7 @@ class Bot(discord.Client):
             await self.onMessageFunction(message)
 
     async def on_voice_state_update(self, member, before, after):
+        """ Called when a user enters or leaves any voice channel """
         if not before.channel and after.channel:
             printMessage(f"Voice channel joined by {member}", MYSC_MESSAGE, True)
         elif before.channel and not after.channel:
@@ -107,6 +115,7 @@ class Bot(discord.Client):
     # Bot methods
 
     def connectDatabase(self, host, user, password, database):
+        """ Opens a new database """
         try:
             self.database = connect(host=host, user=user, password=password, database=database)
         except Error as e:
@@ -114,6 +123,7 @@ class Bot(discord.Client):
         printMessage(f"Connected to database {database}", DEBUG_MESSAGE, True)
 
     def disconnectDatabase(self):
+        """ Disconnects the database """
         if self.database is not None:
             self.database.close()
             self.database = None
@@ -122,12 +132,15 @@ class Bot(discord.Client):
             printMessage("No database found", ERROR_MESSAGE, True)
 
     def isDatabaseConnected(self):
+        """ Returns True if a database was connected """
         return self.database is not None
 
     def getDatabase(self):
+        """ Returns the database or None """
         return self.database
 
     async def shutdown(self):
+        """ Stops the bot and close the database """
         await self.logout()
         if self.database is not None:
             self.database.close()
@@ -138,6 +151,7 @@ class Bot(discord.Client):
         self.rolesID = {x: True for x in self.rolesID}
 
     def setCommand(self, idCommand, command, regex):
+        """ Saves a command at idCommand pos """
         if idCommand > len(self.commands):
             return False
         if idCommand == len(self.commands):
@@ -181,6 +195,9 @@ class Bot(discord.Client):
         return False
 
     # Getters and setters
+
+    def addLoopFunction(self, foo):
+        self.loopFunctions.append(foo)
 
     def addBotID(self, botID):
         if botID not in self.botsID:

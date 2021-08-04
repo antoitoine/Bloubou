@@ -5,6 +5,8 @@
 
 
 from bot import *
+from discord.ext import tasks
+
 import discord
 from dotenv import load_dotenv
 import os
@@ -31,7 +33,6 @@ SERVER_ID_BLOUBOU = 871155691686088714
 
 
 intents = discord.Intents().all()
-
 bloubou = Bot(intents=intents)
 
 
@@ -109,6 +110,12 @@ async def onReady():
     bloubou.connectDatabase(os.getenv("DB_HOST"), os.getenv("DB_USER"), os.getenv("DB_PASSWORD"), os.getenv("DB_NAME"))
 
 
+@tasks.loop(seconds=2)
+async def send():
+    print("bonjoour")
+
+
+#########################
 #########################
 # BLOUBOU CONFIGURATION #
 #########################
@@ -128,6 +135,8 @@ bloubou.setAliases(USER_ID_MOUETTE, ["mouette", "piaf", "oiseau", "goeland"])
 bloubou.addBotID(USER_ID_BLOUBOU)
 bloubou.addBotID(USER_ID_JUGE)
 bloubou.addBotID(USER_ID_MOUETTE)
+
+bloubou.addLoopFunction(send)
 
 bloubou.setOnReady(onReady)
 bloubou.setOnMessage(onMessage)
