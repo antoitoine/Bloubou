@@ -96,8 +96,17 @@ async def classement(args, message):
             await message.channel.send(row)
 
 
+async def onMessage(message):
+    normalizedMessage = tc.normalize(message.content)
+    if len(normalizedMessage) >= 256:
+        return
+    with bloubou.getDatabase().cursor() as cursor:
+        cursor.execute(f"INSERT INTO Temp (message) VALUES (\"{normalizedMessage}\");")
+        bloubou.getDatabase().commit()
+
+
 async def onReady():
-    bloubou.connectDatabase("localhost", "antoine", "AlVick;2303", "bloubou")
+    bloubou.connectDatabase(os.getenv("DB_HOST"), os.getenv("DB_USER"), os.getenv("DB_PASSWORD"), os.getenv("DB_NAME"))
 
 
 #########################
@@ -121,6 +130,7 @@ bloubou.addBotID(USER_ID_JUGE)
 bloubou.addBotID(USER_ID_MOUETTE)
 
 bloubou.setOnReady(onReady)
+bloubou.setOnMessage(onMessage)
 
 bloubou.setCommand(0, randomRoles, r"^roles$")
 bloubou.setCommand(1, changeName, r"(?:change[r|s]?|modifie[s|r]?|transforme[s|r]?) (?:(?:le )?(?:nom|pseudo|pr(?:é|e|è)nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)")
