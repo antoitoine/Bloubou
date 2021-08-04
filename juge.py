@@ -5,8 +5,8 @@
 
 
 from bot import *
-import discord
 from dotenv import load_dotenv
+import discord
 import os
 
 load_dotenv()
@@ -18,9 +18,6 @@ load_dotenv()
 
 
 USER_ID_ANTOINE = 393762112884965389
-USER_ID_JUGE = 809755685201379339
-USER_ID_BLOUBOU = 871145469982670908
-USER_ID_MOUETTE = 872447136577507409
 
 SERVER_ID_JUGE = 871155691686088714
 
@@ -52,15 +49,6 @@ async def juger(args, message):
 
 juge.setGuildID(SERVER_ID_JUGE)
 juge.addAdmin(USER_ID_ANTOINE)
-
-juge.setAliases(USER_ID_ANTOINE, ["antoine", "tatane", "antoinette"])
-juge.setAliases(USER_ID_BLOUBOU, ["bloubou"])
-juge.setAliases(USER_ID_JUGE, ["juge", "le juge", "maitre"])
-juge.setAliases(USER_ID_MOUETTE, ["mouette", "piaf", "oiseau", "goeland"])
-
-juge.addBotID(USER_ID_BLOUBOU)
-juge.addBotID(USER_ID_JUGE)
-juge.addBotID(USER_ID_MOUETTE)
 
 juge.setCommand(0, juger, r"juge[r|s]? (?P<nom>.+)")
 

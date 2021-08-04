@@ -72,10 +72,6 @@ async def onVoice(member, before, after):
 mouette.setGuildID(SERVER_ID_BLOUBOU)
 mouette.addAdmin(USER_ID_ANTOINE)
 
-mouette.addBotID(USER_ID_BLOUBOU)
-mouette.addBotID(USER_ID_JUGE)
-mouette.addBotID(USER_ID_MOUETTE)
-
 mouette.setVoiceFunction(onVoice)
 mouette.setCommand(0, piou, r"mouette")
 

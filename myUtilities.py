@@ -4,6 +4,9 @@
 ###################
 
 
+from mysql.connector import connect, Error
+
+
 #############
 # CONSTANTS #
 #############
@@ -29,3 +32,12 @@ def printMessage(message, messageType, isText=False):
         print(MESSAGES[messageType], f"<{message.author}>", message.content)
     else:
         print(MESSAGES[messageType], message)
+
+
+def connectDatabase(host, user, password, database):
+    db = None
+    try:
+        db = connect(host=host, user=user, password=password, database=database)
+    except Error as e:
+        printMessage(e, ERROR_MESSAGE, True)
+    return db

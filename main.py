@@ -20,11 +20,9 @@ load_dotenv()
 
 
 USER_ID_ANTOINE = 393762112884965389
-USER_ID_BLOUBOU = 871145469982670908
-USER_ID_JUGE = 809755685201379339
-USER_ID_MOUETTE = 872447136577507409
-
 SERVER_ID_BLOUBOU = 871155691686088714
+CHANNEL_ID_CLASSEMENT = 872486010569760828
+MESSAGE_ID_CLASSEMENT = 872594120324038726
 
 
 ################
@@ -91,7 +89,8 @@ async def changeRoleColor(args, message):
 
 
 async def classement(args, message):
-    with bloubou.getDatabase().cursor(dictionary=True) as cursor:
+    db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
+    with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT * FROM Classement")
         for row in cursor.fetchall():
             await message.channel.send(row)
@@ -101,21 +100,33 @@ async def onMessage(message):
     normalizedMessage = tc.normalize(message.content)
     if len(normalizedMessage) >= 256:
         return
-    with bloubou.getDatabase().cursor() as cursor:
+    db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
+    with db.cursor() as cursor:
         cursor.execute(f"INSERT INTO Temp (message) VALUES (\"{normalizedMessage}\");")
-        bloubou.getDatabase().commit()
+
+    if (random.randint(1, 3) == 1):
+        with db.cursor() as cursor:
+            cursor.execute(f"UPDATE Classement SET nb_points = nb_points+1 WHERE discord_id=\"{message.author.id}\"")
+
+    db.commit()
 
 
-async def onReady():
-    bloubou.connectDatabase(os.getenv("DB_HOST"), os.getenv("DB_USER"), os.getenv("DB_PASSWORD"), os.getenv("DB_NAME"))
+@tasks.loop(minutes=10)
+async def updateClassement():
+    classementChannel = discord.utils.get(bloubou.getGuild().channels, id=CHANNEL_ID_CLASSEMENT)
+    messageClassement = await classementChannel.fetch_message(MESSAGE_ID_CLASSEMENT)
+    content = ""
+    db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
+
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute("SELECT * FROM Classement ORDER BY nb_points DESC")
+        for row in cursor.fetchall():
+            user = bloubou.getUserByID(int(row['discord_id']))
+            content = content + f"[ {row['nb_points']} ] **{user.nick or user.name}**\n"
+
+    await messageClassement.edit(content=content)
 
 
-@tasks.loop(seconds=2)
-async def send():
-    print("bonjoour")
-
-
-#########################
 #########################
 # BLOUBOU CONFIGURATION #
 #########################
@@ -124,21 +135,8 @@ async def send():
 bloubou.setGuildID(SERVER_ID_BLOUBOU)
 bloubou.addAdmin(USER_ID_ANTOINE)
 
-bloubou.addConstantRole("admin")
-bloubou.addConstantRole("bot")
+bloubou.addLoopFunction(updateClassement)
 
-bloubou.setAliases(USER_ID_ANTOINE, ["antoine", "tatane", "antoinette"])
-bloubou.setAliases(USER_ID_BLOUBOU, ["bloubou"])
-bloubou.setAliases(USER_ID_JUGE, ["juge", "le juge", "maitre"])
-bloubou.setAliases(USER_ID_MOUETTE, ["mouette", "piaf", "oiseau", "goeland"])
-
-bloubou.addBotID(USER_ID_BLOUBOU)
-bloubou.addBotID(USER_ID_JUGE)
-bloubou.addBotID(USER_ID_MOUETTE)
-
-bloubou.addLoopFunction(send)
-
-bloubou.setOnReady(onReady)
 bloubou.setOnMessage(onMessage)
 
 bloubou.setCommand(0, randomRoles, r"^roles$")

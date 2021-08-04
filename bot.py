@@ -11,7 +11,7 @@ import re
 import textComputing as tc
 
 from myUtilities import *
-from mysql.connector import connect, Error
+from constants import *
 
 
 #############
@@ -30,7 +30,7 @@ class Bot(discord.Client):
 
     regexes = []
     adminUsersID = []
-    idAliases = {}
+    aliases = {}
     constantRoles = []
     rolesID = {
         871166312477503488: True,
@@ -50,19 +50,21 @@ class Bot(discord.Client):
         871168372828667924: True,
         871168483923230771: True
     }
-    botsID = []
+    botIds = []
 
     onVoiceFunction = None
     onMessageFunction = None
     onReadyFunction = None
-
-    database = None
 
     # Inherited methods
 
     async def on_ready(self):
         """ Event called when the bot is connected and ready """
         printMessage("ready", DEBUG_MESSAGE, True)
+
+        self.loadAliases()
+        self.loadConstantRoles()
+        self.loadBotIds()
 
         for foo in self.loopFunctions:
             foo.start()
@@ -72,17 +74,20 @@ class Bot(discord.Client):
 
     async def on_message(self, message):
         """ Event called when a message is read """
-        if message.author.id in self.botsID:
-            printMessage(message, BOT_MESSAGE)
-            return
-
+        botMessage = message.author.id in self.botIds
+        commandMessage = False
         if await self.fetchCommands(message):
+            commandMessage = True
+
+        if commandMessage:
             printMessage(message, COMMAND_MESSAGE)
         else:
-            printMessage(message, USER_MESSAGE)
-
-        if self.onMessageFunction is not None:
-            await self.onMessageFunction(message)
+            if botMessage:
+                printMessage(message, BOT_MESSAGE)
+            else:
+                printMessage(message, USER_MESSAGE)
+            if self.onMessageFunction is not None:
+                await self.onMessageFunction(message)
 
     async def on_voice_state_update(self, member, before, after):
         """ Called when a user enters or leaves any voice channel """
@@ -100,7 +105,7 @@ class Bot(discord.Client):
         """ Searchs a user by his name """
         name = tc.normalize(userName)
         for user in self.getGuild().members:
-            if tc.normalize(user.name) == name or tc.normalize(user.nick or "") == name or name in self.idAliases[user.id]:
+            if tc.normalize(user.name) == name or tc.normalize(user.nick or "") == name or (str(user.id) in self.aliases and name in self.aliases[str(user.id)]):
                 return user
         return None
 
@@ -114,37 +119,36 @@ class Bot(discord.Client):
 
     # Bot methods
 
-    def connectDatabase(self, host, user, password, database):
-        """ Opens a new database """
-        try:
-            self.database = connect(host=host, user=user, password=password, database=database)
-        except Error as e:
-            printMessage(e, ERROR_MESSAGE, True)
-        printMessage(f"Connected to database {database}", DEBUG_MESSAGE, True)
+    def loadAliases(self):
+        db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
+        with db.cursor(dictionary=True) as cursor:
+            cursor.execute('SELECT * FROM Aliases')
+            for row in cursor.fetchall():
+                if row['discord_id'] in self.aliases:
+                    self.aliases[row['discord_id']].append(row['alias'])
+                else:
+                    self.aliases[row['discord_id']] = [row['alias']]
+        db.close()
 
-    def disconnectDatabase(self):
-        """ Disconnects the database """
-        if self.database is not None:
-            self.database.close()
-            self.database = None
-            printMessage("Disconnected from database", DEBUG_MESSAGE, True)
-        else:
-            printMessage("No database found", ERROR_MESSAGE, True)
+    def loadConstantRoles(self):
+        db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
+        with db.cursor(dictionary=True) as cursor:
+            cursor.execute('SELECT * FROM ConstantRoles')
+            for row in cursor.fetchall():
+                self.constantRoles.append(row['role'])
+        db.close()
 
-    def isDatabaseConnected(self):
-        """ Returns True if a database was connected """
-        return self.database is not None
-
-    def getDatabase(self):
-        """ Returns the database or None """
-        return self.database
+    def loadBotIds(self):
+        db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
+        with db.cursor(dictionary=True) as cursor:
+            cursor.execute('SELECT * FROM BotIds')
+            for row in cursor.fetchall():
+                self.botIds.append(int(row['discord_id']))
+        db.close()
 
     async def shutdown(self):
         """ Stops the bot and close the database """
         await self.logout()
-        if self.database is not None:
-            self.database.close()
-            self.database = None
 
     def reinitRolesID(self):
         """ Sets all roles to available """
@@ -199,12 +203,8 @@ class Bot(discord.Client):
     def addLoopFunction(self, foo):
         self.loopFunctions.append(foo)
 
-    def addBotID(self, botID):
-        if botID not in self.botsID:
-            self.botsID.append(botID)
-
     def getBotsID(self):
-        return self.botsID
+        return self.botIds
 
     def setVoiceFunction(self, foo):
         self.onVoiceFunction = foo
@@ -215,15 +215,8 @@ class Bot(discord.Client):
     def setOnReady(self, foo):
         self.onReadyFunction = foo
 
-    def setAliases(self, userId, aliases):
-        self.idAliases[userId] = aliases
-
-    def getIdAliases(self):
-        return self.idAliases
-
-    def addConstantRole(self, roleName):
-        if roleName not in self.constantRoles:
-            self.constantRoles.append(roleName)
+    def getAliases(self):
+        return self.aliases
 
     def getConstantRoles(self):
         return self.constantRoles
