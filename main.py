@@ -12,10 +12,6 @@ import os
 load_dotenv()
 
 
-intents = discord.Intents().all()
-bloubou = Bot(intents=intents)
-
-
 #############
 # CONSTANTS #
 #############
@@ -25,6 +21,16 @@ USER_ID_ANTOINE = 393762112884965389
 USER_ID_BLOUBOU = 871145469982670908
 
 SERVER_ID_BLOUBOU = 871155691686088714
+
+
+################
+# BOT CREATION #
+################
+
+
+intents = discord.Intents().all()
+
+bloubou = Bot(intents=intents)
 
 
 ####################
@@ -86,4 +92,4 @@ bloubou.setCommand(0, randomRoles, r"^roles$")
 bloubou.setCommand(1, changeName, r"(?:change[r|s]?|modifie[s|r]?|transforme[s|r]?) (?:(?:le )?(?:nom|pseudo|pr(?:é|e|è)nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)")
 bloubou.setCommand(2, stopBot, r"^stop$")
 
-bloubou.run(os.getenv("TOKEN"))
+bloubou.run(os.getenv("TOKEN_BLOUBOU"))

@@ -47,6 +47,8 @@ class Bot(discord.Client):
         871168483923230771: True
     }
 
+    onVoiceFunction = None
+
     # Inherited methods
 
     async def on_ready(self):
@@ -63,6 +65,13 @@ class Bot(discord.Client):
             printMessage(message, COMMAND_MESSAGE)
         else:
             printMessage(message, USER_MESSAGE)
+
+    async def on_voice_state_update(self, member, before, after):
+        if not before.channel and after.channel:
+            printMessage(f"Voice channel joined by {member}", MYSC_MESSAGE, True)
+        elif before.channel and not after.channel:
+            printMessage(f"Voice channel leaved by {member}", MYSC_MESSAGE, True)
+        await self.onVoiceFunction(member, before, after)
 
     # Discord methods
 
@@ -132,6 +141,9 @@ class Bot(discord.Client):
         return False
 
     # Getters and setters
+
+    def setVoiceFunction(self, foo):
+        self.onVoiceFunction = foo
 
     def setAliases(self, userId, aliases):
         self.idAliases[userId] = aliases
