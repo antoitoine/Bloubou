@@ -110,7 +110,7 @@ async def onMessage(message):
     db.commit()
 
 
-@tasks.loop(minutes=10)
+@tasks.loop(seconds=10)
 async def updateClassement():
     classementChannel = discord.utils.get(pepe.getGuild().channels, id=CHANNEL_ID_CLASSEMENT)
     messageClassement = await classementChannel.fetch_message(MESSAGE_ID_CLASSEMENT)

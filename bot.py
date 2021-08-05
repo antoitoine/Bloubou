@@ -154,15 +154,15 @@ class Bot(discord.Client):
         """ Sets all roles to available """
         self.rolesID = {x: True for x in self.rolesID}
 
-    def setCommand(self, idCommand, command, regex):
+    def setCommand(self, idCommand, command, regex, channelName="*"):
         """ Saves a command at idCommand pos """
         if idCommand > len(self.commands):
             return False
         if idCommand == len(self.commands):
-            self.commands.append(command)
+            self.commands.append([command, channelName])
             self.regexes.append(regex)
         else:
-            self.commands[idCommand] = command
+            self.commands[idCommand] = [command, channelName]
             self.regexes[idCommand] = regex
         return True
 
@@ -181,7 +181,7 @@ class Bot(discord.Client):
 
     async def callCommand(self, idCommand, args, message):
         """ Calls the specified idCommand command, or returns False """
-        command = self.commands[idCommand]
+        command = self.commands[idCommand][0]
         if command is None:
             printMessage(message, ERROR_MESSAGE)
             return False
@@ -191,6 +191,8 @@ class Bot(discord.Client):
     async def fetchCommands(self, message):
         """ Reads and executes commands, returns False if no command found """
         for iCommand in range(len(self.regexes)):
+            if self.commands[iCommand][1] != "*" and self.commands[iCommand][1] != message.channel.name:
+                continue
             regexResult = re.search(self.regexes[iCommand], message.content + '\n', re.IGNORECASE)
             if regexResult is not None:
                 args = regexResult.groupdict()
