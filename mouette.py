@@ -43,7 +43,7 @@ mouette = Bot(intents=intents)
 
 async def piou(args, message):
     """ Answers Cui cui ! """
-    await message.channel.send("Cui cui !")
+    await message.channel.send("CUI CUI !")
 
 
 async def onVoice(member, before, after):

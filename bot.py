@@ -103,7 +103,7 @@ class Bot(discord.Client):
 
     def getUserByName(self, userName):
         """ Searchs a user by his name """
-        name = tc.normalize(userName)
+        name = tc.normalize(userName or "")
         for user in self.getGuild().members:
             if tc.normalize(user.name) == name or tc.normalize(user.nick or "") == name or (str(user.id) in self.aliases and name in self.aliases[str(user.id)]):
                 return user
@@ -191,7 +191,7 @@ class Bot(discord.Client):
     async def fetchCommands(self, message):
         """ Reads and executes commands, returns False if no command found """
         for iCommand in range(len(self.regexes)):
-            regexResult = re.search(self.regexes[iCommand], message.content, re.IGNORECASE)
+            regexResult = re.search(self.regexes[iCommand], message.content + '\n', re.IGNORECASE)
             if regexResult is not None:
                 args = regexResult.groupdict()
                 if await self.callCommand(iCommand, args, message):
