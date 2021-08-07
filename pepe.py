@@ -10,6 +10,7 @@ from discord.ext import tasks
 import discord
 from dotenv import load_dotenv
 import os
+import textComputing as tc
 
 load_dotenv()
 
@@ -32,6 +33,9 @@ MESSAGE_ID_CLASSEMENT = 872594120324038726
 
 intents = discord.Intents().all()
 pepe = Bot(intents=intents)
+
+lastMessage = ""
+lastAuthor = None
 
 
 #################
@@ -95,22 +99,79 @@ async def classement(args, message):
             await message.channel.send(row)
 
 
-async def onMessage(message):
-    normalizedMessage = tc.normalize(message.content)
-    if len(normalizedMessage) >= 256:
-        return
+def enregistrerReponse(question, reponse):
     db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
     with db.cursor() as cursor:
-        cursor.execute(f"INSERT INTO Temp (message) VALUES (\"{normalizedMessage}\");")
+        for q in tc.tokenize(question):
+            cursor.execute(
+                f"INSERT INTO PepeMessages (question, answer) VALUES (\"{q}\", \"{reponse}\") ON DUPLICATE KEY UPDATE poids=poids+1;")
+    db.commit()
+    db.close()
 
+
+async def onMessage(message):
+    if len(message.content) >= 256:
+        return
+
+    global lastMessage, lastAuthor
+    normalizedMessage = tc.normalize(message.content)
+
+    # Learn new answers
+    if message.author != pepe.user and message.author != lastAuthor and len(lastMessage) > 0:
+        enregistrerReponse(lastMessage, normalizedMessage)
+
+    # Update classement
     if random.randint(1, 3) == 1:
+        db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
         with db.cursor() as cursor:
             cursor.execute(f"UPDATE Classement SET nb_points = nb_points+1 WHERE discord_id=\"{message.author.id}\"")
+        db.commit()
+        db.close()
 
-    db.commit()
+    # Answer to message
+    reponsePepe = ""
+    if message.author != pepe.user:
+        reponsePepe = await genererReponse(normalizedMessage)
+    if len(reponsePepe) > 0:
+        voiceClient = pepe.getGuild().voice_client
+        if (message.author.voice is not None and voiceClient is not None):
+            pepe.readVoiceMessage(reponsePepe)
+        else:
+            await message.channel.send(reponsePepe)
+        lastMessage = reponsePepe
+        lastAuthor = pepe.user
+    else:
+        lastMessage = normalizedMessage
+        lastAuthor = message.author
 
 
-@tasks.loop(seconds=10)
+async def viens(args, message):
+    if message.author.voice is not None:
+        await message.author.voice.channel.connect()
+
+
+async def genererReponse(question):
+    query = "SELECT * FROM PepeMessages WHERE"
+    for token in tc.tokenize(question):
+        query = f"{query} question=\"{token}\" OR"
+    query = query[:-3]
+
+    answers = {}
+    db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
+    with db.cursor(dictionary=True) as cursor:
+        cursor.execute(query)
+        for row in cursor.fetchall():
+            if row["answer"] in answers.keys():
+                answers[row["answer"]] += int(row["poids"])
+            else:
+                answers[row["answer"]] = int(row["poids"])
+    if len(answers) > 0:
+        answer = ''.join(random.choices(list(answers.keys()), list(answers.values())))
+        return answer
+    return ""
+
+
+@tasks.loop(minutes=5.0)
 async def updateClassement():
     classementChannel = discord.utils.get(pepe.getGuild().channels, id=CHANNEL_ID_CLASSEMENT)
     messageClassement = await classementChannel.fetch_message(MESSAGE_ID_CLASSEMENT)
@@ -144,5 +205,6 @@ pepe.setCommand(2, stopBot, r"^stop$")
 pepe.setCommand(3, giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)")
 pepe.setCommand(4, changeRoleColor, r"^colour (?P<roleID>.+)")
 pepe.setCommand(5, classement, r"classement")
+pepe.setCommand(6, viens, r"viens pepe|pepe viens")
 
 pepe.run(os.getenv("TOKEN_PEPE"))

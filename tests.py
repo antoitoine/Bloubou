@@ -1,15 +1,13 @@
-from mysql.connector import connect, Error
+import pyttsx3
 
-db = None
+engine = pyttsx3.init()
+voices = engine.getProperty("voices")
 
-try:
-    db = connect(host="localhost", user="antoine", password="AlVick;2303", database="bloubou")
-except Error as e:
-    print(e)
-
-with db.cursor(dictionary=True) as cursor:
-    cursor.execute("SELECT * FROM Classement")
-    for line in cursor.fetchall():
-        print(line)
-
-db.close()
+for voice in voices:
+    print(voice.id)
+    engine.setProperty("rate", 178)
+    voice.gender = "male"
+    engine.setProperty("voice", voice.id)
+    engine.say("Bonjour je m'appelle Antoine et je suis beau")
+    engine.runAndWait()
+    engine.stop()

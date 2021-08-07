@@ -5,11 +5,22 @@
 
 
 import unicodedata
+import re
+from nltk.stem.snowball import FrenchStemmer
+
+
+stemmer = FrenchStemmer()
 
 
 #############
 # FUNCTIONS #
 #############
+
+
+def tokenize(sentence):
+    sentence = normalize(sentence)
+    sentence = re.sub(r"'", " ", sentence)
+    return [stemmer.stem(word) for word in sentence.split()]
 
 
 def normalize(text):

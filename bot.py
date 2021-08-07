@@ -7,6 +7,7 @@
 import discord
 import random
 import re
+import pyttsx3
 
 import textComputing as tc
 
@@ -76,7 +77,7 @@ class Bot(discord.Client):
         """ Event called when a message is read """
         botMessage = message.author.id in self.botIds
         commandMessage = False
-        if await self.fetchCommands(message):
+        if not botMessage and await self.fetchCommands(message):
             commandMessage = True
 
         if commandMessage:
@@ -118,6 +119,21 @@ class Bot(discord.Client):
         return self.getGuild().get_member(userId)
 
     # Bot methods
+
+    def getVoiceClient(self):
+        for vc in self.voice_clients:
+            if vc.guild == self.getGuild():
+                return vc
+        return None
+
+    def readVoiceMessage(self, message):
+        engine = pyttsx3.init()
+        engine.setProperty("rate", 150)
+        engine.setProperty("voice", "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\MSTTS_V110_frFR_PaulM")
+        engine.save_to_file(message, "tmp.mp3")
+        engine.runAndWait()
+        voiceClient = self.getGuild().voice_client
+        voiceClient.play(discord.FFmpegPCMAudio(source="tmp.mp3"))
 
     def loadAliases(self):
         db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)

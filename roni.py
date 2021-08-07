@@ -30,6 +30,8 @@ CHANNEL_ID_MOUETTE_VENERE = 872193019938492457
 intents = discord.Intents().all()
 roni = Bot(intents=intents)
 
+lastMusic = None
+
 
 #################
 # RONI COMMANDS #
@@ -50,8 +52,9 @@ async def musiqueYoutube(args, message):
     if vc is not None and vc.is_playing():
         vc.stop()
 
-    #async with message.channel.typing():
-    player = await discordMusic.YTDLSource.from_url(args["lien"], loop=roni.loop)
+    global lastMusic
+
+    player = lastMusic = await discordMusic.YTDLSource.from_url(args["lien"], loop=roni.loop)
 
     if vc is None:
         vc = await message.author.voice.channel.connect()
@@ -132,6 +135,16 @@ async def vaChannel(args, message):
         vc.move_to(user.voice.channel)
 
 
+async def replay(args, message):
+    global lastMusic
+    vc = findVoiceClient()
+    if lastMusic is not None:
+        if vc is not None and vc.is_playing():
+            vc.stop()
+        print(vc, lastMusic)
+        vc.play(lastMusic, after=lambda e: print(e) if e else None)
+
+
 ######################
 # RONI CONFIGURATION #
 ######################
@@ -140,12 +153,13 @@ async def vaChannel(args, message):
 roni.setGuildID(SERVER_ID)
 roni.addAdmin(USER_ID_ANTOINE)
 
-roni.setCommand(0, musiqueYoutube, r"(?:joue[r|s]?|play|chante[r|s]?|mets?(?:tr?es?)?|d[e|é]marres?|commences?) +(?:la|les?|une?s?)? *(?:morceaux?|musiques?|chansons?|sons?|titres?)? *(?P<lien>.+)", "musique")
-roni.setCommand(1, pause, r"pauses?", "musique")
+roni.setCommand(0, pause, r"(?:pauses?)", "musique")
+roni.setCommand(1, musiqueYoutube, r"(?:joue[r|s]?|play|chante[r|s]?|mets?(?:tr?es?)?|d[e|é]marres?|commences?) +(?:la|les?|une?s?)? *(?:morceaux?|musiques?|chansons?|sons?|titres?)? *(?P<lien>.+)", "musique")
 roni.setCommand(2, resume, r"(?:resumes?|repren[d|t]s?|continues?)", "musique")
-roni.setCommand(3, disconnect, r"(?:(?:re)?par[s|t]|partir|bouges?|va-t'en|d[e|é]co|d[e|é]gages?)", "musique")
+roni.setCommand(3, disconnect, r"(?:(?:re)?par[s|t]|partir|bouges?|va-t'en|d[e|é]co|d[e|é]gages?|pas toi)", "musique")
 roni.setCommand(4, stop, r"(?:stop|arr[ê|e]tes? +(?:la|les?) +(?:musiques?|chansons?|sons?))", "musique")
 roni.setCommand(5, viensChannel, r"(?:vien[s|t]|revien[s|t]|venir|ram[e|è]nes?(?:[ |-]toi)?)", "musique")
 roni.setCommand(6, vaChannel, r"(?:vas? *)?(?:(?:plus )?vite|vas?|voir|rejoindre|rejoin[t|s]?|connecte[s|r]?-? *(?:toi)??|aller|go) +(?:(?:avec|voir) +|(?:dans +)?le +(?:salon(?: vocal)?|voc(?:al)?|channel) +(?:de +|d'))?(?P<user>.+?(?=(?:\n| +ou +(?:d'|de )?(?P<other>.+)| +et| +il| +elle)))", "musique")
+roni.setCommand(7, replay, r"(?:rejoues?|replay|recommences?|encore)", "musique")
 
 roni.run(os.getenv("TOKEN_RONI"))
