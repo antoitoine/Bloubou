@@ -188,6 +188,17 @@ async def pars(args, message):
         await vc.disconnect()
 
 
+async def toogleMode(args, message):
+    global apprendreMode
+    apprendreMode = not apprendreMode
+
+
+async def deleteLastMessage(args, message):
+    msg = await pepe.getLastMessage(message.channel)
+    await msg.delete()
+    await message.delete()
+
+
 @tasks.loop(minutes=5.0)
 async def updateClassement():
     classementChannel = discord.utils.get(pepe.getGuild().channels, id=CHANNEL_ID_CLASSEMENT)
@@ -213,6 +224,29 @@ async def updateClassement():
     await messageClassement.edit(content=content)
 
 
+async def onReaction(reaction, user, lastMessage):
+    if user == pepe.user:
+        return
+
+    modifScore = 0
+
+    if reaction.emoji == "👍":
+        modifScore = 1
+    elif reaction.emoji == "👎":
+        modifScore = -1
+
+    if modifScore != 0:
+        db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
+        with db.cursor() as cursor:
+            query = f"UPDATE PepeMessages SET poids=poids+{modifScore} WHERE ("
+            for token in tc.tokenize(lastMessage.content):
+                query = f"{query}question=\"{token}\" OR "
+            query = query[:-4]
+            query =f"{query}) AND answer=\"{reaction.message.content}\""
+            printMessage(query, DEBUG_MESSAGE, True)
+            cursor.execute(query)
+        db.commit()
+
 ######################
 # PEPE CONFIGURATION #
 ######################
@@ -225,6 +259,7 @@ pepe.initVoice("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\MSTTS
 pepe.addLoopFunction(updateClassement)
 
 pepe.setOnMessage(onMessage)
+pepe.setOnReact(onReaction)
 
 pepe.setCommand(0, randomRoles, r"^roles$")
 pepe.setCommand(1, changeName, r"(?:change[r|s]?|modifie[s|r]?|transforme[s|r]?|renomme[s|r]?) (?:(?:le )?(?:nom|pseudo|pr(?:é|e|è)nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)")
@@ -232,7 +267,9 @@ pepe.setCommand(2, stopBot, r"^stop$")
 pepe.setCommand(3, giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)")
 pepe.setCommand(4, changeRoleColor, r"^colour (?P<roleID>.+)")
 pepe.setCommand(5, classement, r"classement")
-pepe.setCommand(6, viens, r"vien[s|t]?.+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+vien[s|t]?")
+pepe.setCommand(6, viens, r"(?:vien[s|t]?.+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+vien[s|t]?)")
 pepe.setCommand(7, pars, r"par[s|t].+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+par[s|t]")
+pepe.setCommand(8, deleteLastMessage, r"(?:supprime[s|r]?|enl[e|è]ve[r|s]?).+messages?")
+pepe.setCommand(9, toogleMode, r"change[s|r]?.+modes?")
 
 pepe.run(os.getenv("TOKEN_PEPE"))

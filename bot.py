@@ -56,6 +56,7 @@ class Bot(discord.Client):
     onVoiceFunction = None
     onMessageFunction = None
     onReadyFunction = None
+    onReactFunction = None
 
     engine = None
 
@@ -102,7 +103,15 @@ class Bot(discord.Client):
         if self.onVoiceFunction is not None:
             await self.onVoiceFunction(member, before, after)
 
+    async def on_reaction_add(self, reaction, user):
+        if self.onReactFunction is not None:
+            await self.onReactFunction(reaction, user, await self.getLastMessage(reaction.message.channel))
+
     # Discord methods
+
+    async def getLastMessage(self, channel):
+        msg = await channel.history(limit=2).flatten()
+        return msg[1]
 
     def getUserByName(self, userName):
         """ Searchs a user by his name """
@@ -175,15 +184,15 @@ class Bot(discord.Client):
         """ Sets all roles to available """
         self.rolesID = {x: True for x in self.rolesID}
 
-    def setCommand(self, idCommand, command, regex, channelName="*"):
+    def setCommand(self, idCommand, command, regex, channelId=0):
         """ Saves a command at idCommand pos """
         if idCommand > len(self.commands):
             return False
         if idCommand == len(self.commands):
-            self.commands.append([command, channelName])
+            self.commands.append([command, channelId])
             self.regexes.append(regex)
         else:
-            self.commands[idCommand] = [command, channelName]
+            self.commands[idCommand] = [command, channelId]
             self.regexes[idCommand] = regex
         return True
 
@@ -212,7 +221,7 @@ class Bot(discord.Client):
     async def fetchCommands(self, message):
         """ Reads and executes commands, returns False if no command found """
         for iCommand in range(len(self.regexes)):
-            if self.commands[iCommand][1] != "*" and self.commands[iCommand][1] != message.channel.name:
+            if self.commands[iCommand][1] != 0 and self.commands[iCommand][1] != message.channel.id:
                 continue
             regexResult = re.search(self.regexes[iCommand], message.content + '\n', re.IGNORECASE)
             if regexResult is not None:
@@ -222,6 +231,9 @@ class Bot(discord.Client):
         return False
 
     # Getters and setters
+
+    def setOnReact(self, foo):
+        self.onReactFunction = foo
 
     def addLoopFunction(self, foo):
         self.loopFunctions.append(foo)
