@@ -57,6 +57,8 @@ class Bot(discord.Client):
     onMessageFunction = None
     onReadyFunction = None
 
+    engine = None
+
     # Inherited methods
 
     async def on_ready(self):
@@ -126,12 +128,15 @@ class Bot(discord.Client):
                 return vc
         return None
 
+    def initVoice(self, voiceId, voiceRate):
+        self.engine = pyttsx3.init()
+        self.engine.setProperty("rate", voiceRate)
+        self.engine.setProperty("voice", voiceId)
+
     def readVoiceMessage(self, message):
-        engine = pyttsx3.init()
-        engine.setProperty("rate", 150)
-        engine.setProperty("voice", "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\MSTTS_V110_frFR_PaulM")
-        engine.save_to_file(message, "tmp.mp3")
-        engine.runAndWait()
+
+        self.engine.save_to_file(message, "tmp.mp3")
+        self.engine.runAndWait()
         voiceClient = self.getGuild().voice_client
         voiceClient.play(discord.FFmpegPCMAudio(source="tmp.mp3"))
 

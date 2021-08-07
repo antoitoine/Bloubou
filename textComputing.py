@@ -20,6 +20,8 @@ stemmer = FrenchStemmer()
 def tokenize(sentence):
     sentence = normalize(sentence)
     sentence = re.sub(r"'", " ", sentence)
+    sentence = re.sub(r"ç", "c", sentence)
+    sentence = re.sub(r"\?|!|:|\$|\.|\^|\*|%", "", sentence)
     return [stemmer.stem(word) for word in sentence.split()]
 
 

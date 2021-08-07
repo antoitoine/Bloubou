@@ -11,6 +11,7 @@ import discord
 from dotenv import load_dotenv
 import os
 import textComputing as tc
+import asyncio
 
 load_dotenv()
 
@@ -36,6 +37,8 @@ pepe = Bot(intents=intents)
 
 lastMessage = ""
 lastAuthor = None
+
+apprendreMode = False
 
 
 #################
@@ -118,7 +121,7 @@ async def onMessage(message):
 
     # Learn new answers
     if message.author != pepe.user and message.author != lastAuthor and len(lastMessage) > 0:
-        enregistrerReponse(lastMessage, normalizedMessage)
+        enregistrerReponse(lastMessage, message.content)
 
     # Update classement
     if random.randint(1, 3) == 1:
@@ -137,7 +140,12 @@ async def onMessage(message):
         if (message.author.voice is not None and voiceClient is not None):
             pepe.readVoiceMessage(reponsePepe)
         else:
-            await message.channel.send(reponsePepe)
+            async with message.channel.typing():
+                await asyncio.sleep(2)
+            reponseMessage = await message.channel.send(reponsePepe)
+            if apprendreMode:
+                await reponseMessage.add_reaction("👍")
+                await reponseMessage.add_reaction("👎")
         lastMessage = reponsePepe
         lastAuthor = pepe.user
     else:
@@ -165,24 +173,42 @@ async def genererReponse(question):
                 answers[row["answer"]] += int(row["poids"])
             else:
                 answers[row["answer"]] = int(row["poids"])
+
     if len(answers) > 0:
-        answer = ''.join(random.choices(list(answers.keys()), list(answers.values())))
+        minPoids = min(list(answers.values()))
+        poids = [x + abs(minPoids) + 1 for x in answers.values()]  # Remove negative weights
+        answer = ''.join(random.choices(list(answers.keys()), poids))
         return answer
     return ""
+
+
+async def pars(args, message):
+    vc = pepe.getVoiceClient()
+    if vc is not None:
+        await vc.disconnect()
 
 
 @tasks.loop(minutes=5.0)
 async def updateClassement():
     classementChannel = discord.utils.get(pepe.getGuild().channels, id=CHANNEL_ID_CLASSEMENT)
     messageClassement = await classementChannel.fetch_message(MESSAGE_ID_CLASSEMENT)
-    content = ""
+    content = "**SUPER CLASSEMENT DE LA MORT**\n"
     db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
 
     with db.cursor(dictionary=True) as cursor:
         cursor.execute("SELECT * FROM Classement ORDER BY nb_points DESC")
+        posClassement = 1
         for row in cursor.fetchall():
             user = pepe.getUserByID(int(row['discord_id']))
-            content = content + f"[ {row['nb_points']} ] **{user.nick or user.name}**\n"
+            medal = ":medal:"
+            if posClassement == 1:
+                medal = ":first_place:"
+            elif posClassement == 2:
+                medal = ":second_place:"
+            elif posClassement == 3:
+                medal = ":third_place:"
+            content = content + f"{medal}   **{row['nb_points']}pts**   <@{user.id}>\n"
+            posClassement += 1
 
     await messageClassement.edit(content=content)
 
@@ -194,6 +220,7 @@ async def updateClassement():
 
 pepe.setGuildID(SERVER_ID)
 pepe.addAdmin(USER_ID_ANTOINE)
+pepe.initVoice("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\MSTTS_V110_frFR_PaulM", 150)
 
 pepe.addLoopFunction(updateClassement)
 
@@ -205,6 +232,7 @@ pepe.setCommand(2, stopBot, r"^stop$")
 pepe.setCommand(3, giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)")
 pepe.setCommand(4, changeRoleColor, r"^colour (?P<roleID>.+)")
 pepe.setCommand(5, classement, r"classement")
-pepe.setCommand(6, viens, r"viens pepe|pepe viens")
+pepe.setCommand(6, viens, r"vien[s|t]?.+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+vien[s|t]?")
+pepe.setCommand(7, pars, r"par[s|t].+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+par[s|t]")
 
 pepe.run(os.getenv("TOKEN_PEPE"))
