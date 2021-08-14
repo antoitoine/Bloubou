@@ -13,6 +13,20 @@ import textComputing as tc
 
 from myUtilities import *
 from constants import *
+from dataclasses import dataclass
+from typing import Callable, Awaitable, List
+
+
+####################
+# COMMANDS GESTION #
+####################
+
+
+@dataclass
+class BotCommand:
+    command: Callable[[list, discord.Message], Awaitable[None]]
+    regex: str
+    channelId: int
 
 
 #############
@@ -25,11 +39,11 @@ class Bot(discord.Client):
     # Member variables
 
     guildID: int
-    commands = []
 
     loopFunctions = []
 
-    regexes = []
+    botCommands: List[BotCommand] = []
+
     adminUsersID = []
     aliases = {}
     constantRoles = []
@@ -184,16 +198,14 @@ class Bot(discord.Client):
         """ Sets all roles to available """
         self.rolesID = {x: True for x in self.rolesID}
 
-    def setCommand(self, idCommand, command, regex, channelId=0):
+    def setCommand(self, idCommand: int, command: Callable[[list, str], Awaitable[None]], regex: str, channelId=0):
         """ Saves a command at idCommand pos """
-        if idCommand > len(self.commands):
+        if idCommand > len(self.botCommands):
             return False
-        if idCommand == len(self.commands):
-            self.commands.append([command, channelId])
-            self.regexes.append(regex)
+        if idCommand == len(self.botCommands):
+            self.botCommands.append(BotCommand(command, regex, channelId))
         else:
-            self.commands[idCommand] = [command, channelId]
-            self.regexes[idCommand] = regex
+            self.botCommands[idCommand] = BotCommand(command, regex, channelId)
         return True
 
     def getRandomRoleID(self):
@@ -211,7 +223,7 @@ class Bot(discord.Client):
 
     async def callCommand(self, idCommand, args, message):
         """ Calls the specified idCommand command, or returns False """
-        command = self.commands[idCommand][0]
+        command = self.botCommands[idCommand].command
         if command is None:
             printMessage(message, ERROR_MESSAGE)
             return False
@@ -220,10 +232,10 @@ class Bot(discord.Client):
 
     async def fetchCommands(self, message):
         """ Reads and executes commands, returns False if no command found """
-        for iCommand in range(len(self.regexes)):
-            if self.commands[iCommand][1] != 0 and self.commands[iCommand][1] != message.channel.id:
+        for iCommand in range(len(self.botCommands)):
+            if self.botCommands[iCommand].channelId != 0 and message.channel.id != self.botCommands[iCommand].channelId:
                 continue
-            regexResult = re.search(self.regexes[iCommand], message.content + '\n', re.IGNORECASE)
+            regexResult = re.search(self.botCommands[iCommand].regex, message.content + '\n', re.IGNORECASE)
             if regexResult is not None:
                 args = regexResult.groupdict()
                 if await self.callCommand(iCommand, args, message):
