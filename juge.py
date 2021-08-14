@@ -19,7 +19,7 @@ load_dotenv()
 
 USER_ID_ANTOINE = 393762112884965389
 
-SERVER_ID_JUGE = 871155691686088714
+SERVER_ID = 871155691686088714
 
 
 ################
@@ -47,9 +47,11 @@ async def juger(args, message):
 ######################
 
 
-juge.setGuildID(SERVER_ID_JUGE)
-juge.addAdmin(USER_ID_ANTOINE)
+juge.guildId = SERVER_ID
+juge.adminIds = [USER_ID_ANTOINE]
 
-juge.setCommand(0, juger, r"juge[r|s]? (?P<nom>.+)")
+juge.botCommands = [
+    BotCommand(juger, r"juge[r|s]? (?P<nom>.+)")
+]
 
 juge.run(os.getenv("TOKEN_JUGE"))

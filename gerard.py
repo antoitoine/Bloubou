@@ -42,7 +42,7 @@ gerard = Bot(intents=intents)
 ########################
 
 
-gerard.setGuildID(SERVER_ID)
-gerard.addAdmin(USER_ID_ANTOINE)
+gerard.guildId = SERVER_ID
+gerard.adminIds = [USER_ID_ANTOINE]
 
 gerard.run(os.getenv("TOKEN_GERARD"))

@@ -26,7 +26,7 @@ from typing import Callable, Awaitable, List
 class BotCommand:
     command: Callable[[list, discord.Message], Awaitable[None]]
     regex: str
-    channelId: int
+    channelId: int = 0
 
 
 #############
@@ -36,45 +36,27 @@ class BotCommand:
 
 class Bot(discord.Client):
 
-    # Member variables
-
-    guildID: int
-
-    loopFunctions = []
-
-    botCommands: List[BotCommand] = []
-
-    adminUsersID = []
-    aliases = {}
-    constantRoles = []
-    rolesID = {
-        871166312477503488: True,
-        871166956408016946: True,
-        871166756985643018: True,
-        871167362873831464: True,
-        871165214635221042: True,
-        871167998696759307: True,
-        871167758224740402: True,
-        871167588636442634: True,
-        871165751850045450: True,
-        871168934685077504: True,
-        871168808495235082: True,
-        871169321009815582: True,
-        871170622993104936: True,
-        871168275134963802: True,
-        871168372828667924: True,
-        871168483923230771: True
-    }
-    botIds = []
-
-    onVoiceFunction = None
-    onMessageFunction = None
-    onReadyFunction = None
-    onReactFunction = None
-
-    engine = None
-
     # Inherited methods
+
+    def __init__(self, **options):
+        super().__init__(**options)
+
+        self._guildID = 0
+
+        self._botCommands: List[BotCommand] = []
+
+        self._adminUsersID = []
+        self._constantRoles = []
+        self._botIds = []
+        self._aliases = {}
+
+        self._loopFunctions = []
+        self._onVoiceFunction = None
+        self._onMessageFunction = None
+        self._onReadyFunction = None
+        self._onReactFunction = None
+
+        self.engine = pyttsx3.init()
 
     async def on_ready(self):
         """ Event called when the bot is connected and ready """
@@ -93,19 +75,17 @@ class Bot(discord.Client):
     async def on_message(self, message):
         """ Event called when a message is read """
         botMessage = message.author.id in self.botIds
-        commandMessage = False
-        if not botMessage and await self.fetchCommands(message):
-            commandMessage = True
 
-        if commandMessage:
+        if not botMessage and await self.fetchCommands(message):
             printMessage(message, COMMAND_MESSAGE)
+            return
+        if botMessage:
+            printMessage(message, BOT_MESSAGE)
         else:
-            if botMessage:
-                printMessage(message, BOT_MESSAGE)
-            else:
-                printMessage(message, USER_MESSAGE)
-            if self.onMessageFunction is not None:
-                await self.onMessageFunction(message)
+            printMessage(message, USER_MESSAGE)
+
+        if self.onMessageFunction is not None:
+            await self.onMessageFunction(message)
 
     async def on_voice_state_update(self, member, before, after):
         """ Called when a user enters or leaves any voice channel """
@@ -130,29 +110,28 @@ class Bot(discord.Client):
     def getUserByName(self, userName):
         """ Searchs a user by his name """
         name = tc.normalize(userName or "")
-        for user in self.getGuild().members:
+        for user in self.get_guild(self._guildID).members:
             if tc.normalize(user.name) == name or tc.normalize(user.nick or "") == name or (str(user.id) in self.aliases and name in self.aliases[str(user.id)]):
                 return user
         return None
 
     def getRoleByID(self, roleId):
         """ Searchs a role by his id """
-        return discord.utils.get(self.getGuild().roles, id=roleId)
+        return discord.utils.get(self.get_guild(self._guildID).roles, id=roleId)
 
     def getUserByID(self, userId):
         """ Searchs a user by his id """
-        return self.getGuild().get_member(userId)
+        return self.get_guild(self._guildID).get_member(userId)
 
     # Bot methods
 
     def getVoiceClient(self):
         for vc in self.voice_clients:
-            if vc.guild == self.getGuild():
+            if vc.guild == self.guild:
                 return vc
         return None
 
     def initVoice(self, voiceId, voiceRate):
-        self.engine = pyttsx3.init()
         self.engine.setProperty("rate", voiceRate)
         self.engine.setProperty("voice", voiceId)
 
@@ -160,7 +139,7 @@ class Bot(discord.Client):
 
         self.engine.save_to_file(message, "tmp.mp3")
         self.engine.runAndWait()
-        voiceClient = self.getGuild().voice_client
+        voiceClient = self.get_guild(self._guildID).voice_client
         voiceClient.play(discord.FFmpegPCMAudio(source="tmp.mp3"))
 
     def loadAliases(self):
@@ -194,33 +173,6 @@ class Bot(discord.Client):
         """ Stops the bot and close the database """
         await self.logout()
 
-    def reinitRolesID(self):
-        """ Sets all roles to available """
-        self.rolesID = {x: True for x in self.rolesID}
-
-    def setCommand(self, idCommand: int, command: Callable[[list, str], Awaitable[None]], regex: str, channelId=0):
-        """ Saves a command at idCommand pos """
-        if idCommand > len(self.botCommands):
-            return False
-        if idCommand == len(self.botCommands):
-            self.botCommands.append(BotCommand(command, regex, channelId))
-        else:
-            self.botCommands[idCommand] = BotCommand(command, regex, channelId)
-        return True
-
-    def getRandomRoleID(self):
-        """ Returns a random role id, or -1 if there is no available """
-        roleId, available = random.choice(list(self.rolesID.items()))
-        nbChoices = 0
-        while not available and nbChoices < 128:
-            roleId, available = random.choice(list(self.rolesID.items()))
-            nbChoices += 1
-
-        if available:
-            self.rolesID[roleId] = False
-            return roleId
-        return -1
-
     async def callCommand(self, idCommand, args, message):
         """ Calls the specified idCommand command, or returns False """
         command = self.botCommands[idCommand].command
@@ -244,39 +196,90 @@ class Bot(discord.Client):
 
     # Getters and setters
 
-    def setOnReact(self, foo):
-        self.onReactFunction = foo
+    @property
+    def onReactFunction(self):
+        return self._onReactFunction
 
-    def addLoopFunction(self, foo):
-        self.loopFunctions.append(foo)
+    @onReactFunction.setter
+    def onReactFunction(self, foo):
+        self._onReactFunction = foo
 
-    def getBotsID(self):
-        return self.botIds
+    @property
+    def loopFunctions(self):
+        return self._loopFunctions
 
-    def setVoiceFunction(self, foo):
-        self.onVoiceFunction = foo
+    @loopFunctions.setter
+    def loopFunctions(self, foos):
+        self._loopFunctions = foos
 
-    def setOnMessage(self, foo):
-        self.onMessageFunction = foo
+    @property
+    def botIds(self):
+        return self._botIds
 
-    def setOnReady(self, foo):
-        self.onReadyFunction = foo
+    @property
+    def onVoiceFunction(self):
+        return self._onVoiceFunction
 
-    def getAliases(self):
-        return self.aliases
+    @onVoiceFunction.setter
+    def onVoiceFunction(self, foo):
+        self._onVoiceFunction = foo
 
-    def getConstantRoles(self):
-        return self.constantRoles
+    @property
+    def onMessageFunction(self):
+        return self._onMessageFunction
 
-    def addAdmin(self, adminID):
-        if adminID not in self.adminUsersID:
-            self.adminUsersID.append(adminID)
+    @onMessageFunction.setter
+    def onMessageFunction(self, foo):
+        self._onMessageFunction = foo
 
-    def getAdminList(self):
-        return self.adminUsersID
+    @property
+    def onReadyFunction(self):
+        return self._onReadyFunction
 
-    def setGuildID(self, guildID):
-        self.guildID = guildID
+    @onReadyFunction.setter
+    def onReadyFunction(self, foo):
+        self._onReadyFunction = foo
 
-    def getGuild(self):
-        return self.get_guild(self.guildID)
+    @property
+    def aliases(self):
+        return self._aliases
+
+    @aliases.setter
+    def aliases(self, a):
+        self._aliases = a
+
+    @property
+    def constantRoles(self):
+        return self._constantRoles
+
+    @constantRoles.setter
+    def constantRoles(self, roles):
+        self._constantRoles = roles
+
+    @property
+    def adminIds(self):
+        return self._adminUsersID
+
+    @adminIds.setter
+    def adminIds(self, ids):
+        self._adminUsersID = ids
+
+    @property
+    def guild(self):
+        return self.get_guild(self.guildId)
+
+    @property
+    def guildId(self):
+        return self._guildID
+
+    @guildId.setter
+    def guildId(self, gId):
+        self._guildID = gId
+
+    @property
+    def botCommands(self):
+        return self._botCommands
+
+    @botCommands.setter
+    def botCommands(self, commands):
+        self._botCommands = commands

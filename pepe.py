@@ -55,19 +55,51 @@ async def changeName(args, message):
 
 async def randomRoles(args, message):
     """ Distributes random role to everyone """
-    if message.author.id not in pepe.getAdminList():
+    if message.author.id not in pepe.adminIds:
         return
 
-    pepe.reinitRolesID()
+    rolesID = {
+        871166312477503488: True,
+        871166956408016946: True,
+        871166756985643018: True,
+        871167362873831464: True,
+        871165214635221042: True,
+        871167998696759307: True,
+        871167758224740402: True,
+        871167588636442634: True,
+        871165751850045450: True,
+        871168934685077504: True,
+        871168808495235082: True,
+        871169321009815582: True,
+        871170622993104936: True,
+        871168275134963802: True,
+        871168372828667924: True,
+        871168483923230771: True
+    }
+
     for member in message.guild.members:
-        if member.id in pepe.getBotsID():
+        if member.id in pepe.botIds:
             continue
         printMessage(f"Removing roles from {member}", DEBUG_MESSAGE, True)
         for role in member.roles[1:]:
-            if role.name not in pepe.getConstantRoles():
+            if role.name not in pepe.constantRoles:
                 printMessage(f"Removing {role.name}", DEBUG_MESSAGE, True)
                 await member.remove_roles(role)
-        newRoleID = pepe.getRandomRoleID()
+
+        # Random role
+        roleId, available = random.choice(list(rolesID.items()))
+        nbChoices = 0
+        while not available and nbChoices < 128:
+            roleId, available = random.choice(list(rolesID.items()))
+            nbChoices += 1
+
+        if available:
+            rolesID[roleId] = False
+            newRoleID = roleId
+        else:
+            newRoleID = 0
+
+        # Give role
         if newRoleID > 0:
             printMessage(f"{member} gets the role id {newRoleID}", DEBUG_MESSAGE, True)
             await member.add_roles(discord.utils.get(message.guild.roles, id=newRoleID))
@@ -78,7 +110,7 @@ async def randomRoles(args, message):
 
 async def stopBot(args, message):
     """ Shutdowns the bot """
-    if message.author.id not in pepe.getAdminList():
+    if message.author.id not in pepe.adminIds:
         return
     await pepe.shutdown()
 
@@ -136,7 +168,7 @@ async def onMessage(message):
     if message.author != pepe.user:
         reponsePepe = await genererReponse(normalizedMessage)
     if len(reponsePepe) > 0:
-        voiceClient = pepe.getGuild().voice_client
+        voiceClient = pepe.guild.voice_client
         if (message.author.voice is not None and voiceClient is not None):
             pepe.readVoiceMessage(reponsePepe)
         else:
@@ -201,7 +233,7 @@ async def deleteLastMessage(args, message):
 
 @tasks.loop(minutes=5.0)
 async def updateClassement():
-    classementChannel = discord.utils.get(pepe.getGuild().channels, id=CHANNEL_ID_CLASSEMENT)
+    classementChannel = discord.utils.get(pepe.guild.channels, id=CHANNEL_ID_CLASSEMENT)
     messageClassement = await classementChannel.fetch_message(MESSAGE_ID_CLASSEMENT)
     content = "**SUPER CLASSEMENT DE LA MORT**\n"
     db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
@@ -252,24 +284,26 @@ async def onReaction(reaction, user, lastMessage):
 ######################
 
 
-pepe.setGuildID(SERVER_ID)
-pepe.addAdmin(USER_ID_ANTOINE)
+pepe.guildId = SERVER_ID
+pepe.adminIds = [USER_ID_ANTOINE]
 pepe.initVoice("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\MSTTS_V110_frFR_PaulM", 150)
 
-pepe.addLoopFunction(updateClassement)
+pepe.loopFunctions = [updateClassement]
 
-pepe.setOnMessage(onMessage)
-pepe.setOnReact(onReaction)
+pepe.onMessageFunction = onMessage
+pepe.onReactFunction = onReaction
 
-pepe.setCommand(0, randomRoles, r"^roles$")
-pepe.setCommand(1, changeName, r"(?:change[r|s]?|modifie[s|r]?|transforme[s|r]?|renomme[s|r]?) (?:(?:le )?(?:nom|pseudo|pr(?:é|e|è)nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)")
-pepe.setCommand(2, stopBot, r"^stop$")
-pepe.setCommand(3, giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)")
-pepe.setCommand(4, changeRoleColor, r"^colour (?P<roleID>.+)")
-pepe.setCommand(5, classement, r"classement")
-pepe.setCommand(6, viens, r"(?:vien[s|t]?.+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+vien[s|t]?)")
-pepe.setCommand(7, pars, r"par[s|t].+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+par[s|t]")
-pepe.setCommand(8, deleteLastMessage, r"(?:supprime[s|r]?|enl[e|è]ve[r|s]?).+messages?")
-pepe.setCommand(9, toogleMode, r"change[s|r]?.+modes?")
+pepe.botCommands = [
+    BotCommand(randomRoles, r"^roles$"),
+    BotCommand(changeName, r"(?:change[r|s]?|modifie[s|r]?|transforme[s|r]?|renomme[s|r]?) (?:(?:le )?(?:nom|pseudo|pr(?:é|e|è)nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)"),
+    BotCommand(stopBot, r"^stop$"),
+    BotCommand(giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)"),
+    BotCommand(changeRoleColor, r"^colour (?P<roleID>.+)"),
+    BotCommand(classement, r"classement"),
+    BotCommand(viens, r"(?:vien[s|t]?.+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+vien[s|t]?)"),
+    BotCommand(pars, r"par[s|t].+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+par[s|t]"),
+    BotCommand(toogleMode, r"change[s|r]?.+modes?"),
+    BotCommand(deleteLastMessage, r"(?:supprime[s|r]?|enl[e|è]ve[r|s]?).+messages?")
+]
 
 pepe.run(os.getenv("TOKEN_PEPE"))

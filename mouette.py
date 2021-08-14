@@ -18,11 +18,8 @@ load_dotenv()
 
 
 USER_ID_ANTOINE = 393762112884965389
-USER_ID_BLOUBOU = 871145469982670908
-USER_ID_JUGE = 809755685201379339
-USER_ID_MOUETTE = 872447136577507409
 
-SERVER_ID_BLOUBOU = 871155691686088714
+SERVER_ID = 871155691686088714
 
 CHANNEL_ID_MOUETTE_VENERE = 872193019938492457
 
@@ -51,7 +48,7 @@ async def onVoice(member, before, after):
     if member == mouette.user:
         return
 
-    voiceClient = discord.utils.get(mouette.voice_clients, guild=mouette.getGuild())
+    voiceClient = discord.utils.get(mouette.voice_clients, guild=mouette.guild)
 
     if (voiceClient and voiceClient.is_connected()) and (not after.channel or after.channel.id != CHANNEL_ID_MOUETTE_VENERE):
         await voiceClient.disconnect()
@@ -69,10 +66,12 @@ async def onVoice(member, before, after):
 #########################
 
 
-mouette.setGuildID(SERVER_ID_BLOUBOU)
-mouette.addAdmin(USER_ID_ANTOINE)
+mouette.guildId = SERVER_ID
+mouette.adminIds = [USER_ID_ANTOINE]
 
-mouette.setVoiceFunction(onVoice)
-mouette.setCommand(0, piou, r"mouette")
+mouette.onVoiceFunction = onVoice
+mouette.botCommands = [
+    BotCommand(piou, r"mouette")
+]
 
 mouette.run(os.getenv("TOKEN_MOUETTE"))
