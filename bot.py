@@ -54,6 +54,8 @@ class Bot(discord.Client):
         self._onMessageFunction = None
         self._onReadyFunction = None
         self._onReactFunction = None
+        self._onRawMessageDelete = None
+        self._onRawMessageEdit = None
 
         self.engine = pyttsx3.init()
 
@@ -99,6 +101,14 @@ class Bot(discord.Client):
     async def on_reaction_add(self, reaction, user):
         if self.onReactFunction is not None:
             await self.onReactFunction(reaction, user, await self.getLastMessage(reaction.message.channel))
+
+    async def on_raw_message_delete(self, payload):
+        if self.onRawMessageDelete is not None:
+            await self.onRawMessageDelete(payload)
+
+    async def on_raw_message_edit(self, playload):
+        if self.onRawMessageEdit is not None:
+            await self.onRawMessageEdit(playload)
 
     # Discord methods
 
@@ -284,3 +294,19 @@ class Bot(discord.Client):
     @botCommands.setter
     def botCommands(self, commands):
         self._botCommands = commands
+
+    @property
+    def onRawMessageDelete(self):
+        return self._onRawMessageDelete
+
+    @onRawMessageDelete.setter
+    def onRawMessageDelete(self, foo):
+        self._onRawMessageDelete = foo
+
+    @property
+    def onRawMessageEdit(self):
+        return self._onRawMessageEdit
+
+    @onRawMessageEdit.setter
+    def onRawMessageEdit(self, foo):
+        self._onRawMessageEdit = foo

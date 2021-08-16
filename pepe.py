@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import os
 import textComputing as tc
 import asyncio
+import random
 
 load_dotenv()
 
