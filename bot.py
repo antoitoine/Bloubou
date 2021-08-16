@@ -5,7 +5,6 @@
 
 
 import discord
-import random
 import re
 import pyttsx3
 
@@ -104,6 +103,7 @@ class Bot(discord.Client):
     # Discord methods
 
     async def getLastMessage(self, channel):
+        """ Returns the message before current message """
         msg = await channel.history(limit=2).flatten()
         return msg[1]
 
@@ -111,7 +111,8 @@ class Bot(discord.Client):
         """ Searchs a user by his name """
         name = tc.normalize(userName or "")
         for user in self.get_guild(self._guildID).members:
-            if tc.normalize(user.name) == name or tc.normalize(user.nick or "") == name or (str(user.id) in self.aliases and name in self.aliases[str(user.id)]):
+            if tc.normalize(user.name) == name or tc.normalize(user.nick or "") == name or \
+                    (str(user.id) in self.aliases and name in self.aliases[str(user.id)]):
                 return user
         return None
 

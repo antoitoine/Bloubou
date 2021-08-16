@@ -1,7 +1,7 @@
-#####################################
-# MAIN FILE OF DISCORD BOTS PROJECT #
-#            03/08/21               #
-#####################################
+####################
+# PEPE DISCORD BOT #
+#     03/08/21     #
+####################
 
 
 from bot import *
@@ -169,7 +169,7 @@ async def onMessage(message):
         reponsePepe = await genererReponse(normalizedMessage)
     if len(reponsePepe) > 0:
         voiceClient = pepe.guild.voice_client
-        if (message.author.voice is not None and voiceClient is not None):
+        if message.author.voice is not None and voiceClient is not None:
             pepe.readVoiceMessage(reponsePepe)
         else:
             async with message.channel.typing():
@@ -256,7 +256,7 @@ async def updateClassement():
     await messageClassement.edit(content=content)
 
 
-async def onReaction(reaction, user, lastMessage):
+async def onReaction(reaction, user, last):
     if user == pepe.user:
         return
 
@@ -271,10 +271,10 @@ async def onReaction(reaction, user, lastMessage):
         db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
         with db.cursor() as cursor:
             query = f"UPDATE PepeMessages SET poids=poids+{modifScore} WHERE ("
-            for token in tc.tokenize(lastMessage.content):
+            for token in tc.tokenize(last.content):
                 query = f"{query}question=\"{token}\" OR "
             query = query[:-4]
-            query =f"{query}) AND answer=\"{reaction.message.content}\""
+            query = f"{query}) AND answer=\"{reaction.message.content}\""
             printMessage(query, DEBUG_MESSAGE, True)
             cursor.execute(query)
         db.commit()
@@ -286,7 +286,7 @@ async def onReaction(reaction, user, lastMessage):
 
 pepe.guildId = SERVER_ID
 pepe.adminIds = [USER_ID_ANTOINE]
-pepe.initVoice("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\MSTTS_V110_frFR_PaulM", 150)
+pepe.initVoice("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\MSTTS_V110_frFR_PaulM", 150)
 
 pepe.loopFunctions = [updateClassement]
 

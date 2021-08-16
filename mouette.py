@@ -50,7 +50,8 @@ async def onVoice(member, before, after):
 
     voiceClient = discord.utils.get(mouette.voice_clients, guild=mouette.guild)
 
-    if (voiceClient and voiceClient.is_connected()) and (not after.channel or after.channel.id != CHANNEL_ID_MOUETTE_VENERE):
+    if (voiceClient and voiceClient.is_connected()) and \
+       (not after.channel or after.channel.id != CHANNEL_ID_MOUETTE_VENERE):
         await voiceClient.disconnect()
     elif (not voiceClient) and (after.channel and after.channel.id == CHANNEL_ID_MOUETTE_VENERE):
         voiceClient = await after.channel.connect()
