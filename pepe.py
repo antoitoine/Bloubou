@@ -136,6 +136,10 @@ async def classement(args, message):
 
 
 def enregistrerReponse(question, reponse):
+    reponse = re.sub(r"^ *(p[ée]p[ée]|pap[yi]|(le )?vieux) *", "", reponse, flags=re.IGNORECASE)
+    print(question, ":", reponse)
+    if len(reponse) == 0:
+        return
     db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
     with db.cursor() as cursor:
         for q in tc.tokenize(question):
@@ -146,6 +150,8 @@ def enregistrerReponse(question, reponse):
 
 
 async def onMessage(message):
+    """ Learns answers and updates classement """
+
     if len(message.content) >= 256:
         return
 
@@ -153,7 +159,8 @@ async def onMessage(message):
     normalizedMessage = tc.normalize(message.content)
 
     # Learn new answers
-    if message.author != pepe.user and message.author != lastAuthor and len(lastMessage) > 0:
+    if message.author != pepe.user and message.author != lastAuthor and len(lastMessage) > 0 and \
+            not any(x in pepe.stopAnsweringWords for x in normalizedMessage.split()):
         enregistrerReponse(lastMessage, message.content)
 
     # Update classement
@@ -164,26 +171,8 @@ async def onMessage(message):
         db.commit()
         db.close()
 
-    # Answer to message
-    reponsePepe = ""
-    if message.author != pepe.user:
-        reponsePepe = await genererReponse(normalizedMessage)
-    if len(reponsePepe) > 0:
-        voiceClient = pepe.guild.voice_client
-        if message.author.voice is not None and voiceClient is not None:
-            pepe.readVoiceMessage(reponsePepe)
-        else:
-            async with message.channel.typing():
-                await asyncio.sleep(2)
-            reponseMessage = await message.channel.send(reponsePepe)
-            if apprendreMode:
-                await reponseMessage.add_reaction("👍")
-                await reponseMessage.add_reaction("👎")
-        lastMessage = reponsePepe
-        lastAuthor = pepe.user
-    else:
-        lastMessage = normalizedMessage
-        lastAuthor = message.author
+    lastMessage = message.content
+    lastAuthor = message.author
 
 
 async def viens(args, message):
@@ -192,6 +181,8 @@ async def viens(args, message):
 
 
 async def genererReponse(question):
+    """ Gets a random answers """
+
     query = "SELECT * FROM PepeMessages WHERE"
     for token in tc.tokenize(question):
         query = f"{query} question=\"{token}\" OR"
@@ -234,6 +225,8 @@ async def deleteLastMessage(args, message):
 
 @tasks.loop(minutes=5.0)
 async def updateClassement():
+    """ Updates the classement's message """
+
     classementChannel = discord.utils.get(pepe.guild.channels, id=CHANNEL_ID_CLASSEMENT)
     messageClassement = await classementChannel.fetch_message(MESSAGE_ID_CLASSEMENT)
     content = "**SUPER CLASSEMENT DE LA MORT**\n"
@@ -280,6 +273,26 @@ async def onReaction(reaction, user, last):
             cursor.execute(query)
         db.commit()
 
+
+async def sendAnswer(message):
+    global apprendreMode
+    normalizedMessage = tc.normalize(message.content)
+
+    reponsePepe = await genererReponse(normalizedMessage)
+
+    if len(reponsePepe) > 0:
+        voiceClient = pepe.guild.voice_client
+        if message.author.voice is not None and voiceClient is not None:
+            pepe.readVoiceMessage(reponsePepe)
+        else:
+            async with message.channel.typing():
+                await asyncio.sleep(1)
+            reponseMessage = await message.channel.send(reponsePepe)
+            if apprendreMode:
+                await reponseMessage.add_reaction("👍")
+                await reponseMessage.add_reaction("👎")
+
+
 ######################
 # PEPE CONFIGURATION #
 ######################
@@ -287,12 +300,16 @@ async def onReaction(reaction, user, last):
 
 pepe.guildId = SERVER_ID
 pepe.adminIds = [USER_ID_ANTOINE]
-pepe.initVoice("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\MSTTS_V110_frFR_PaulM", 150)
+pepe.botNames = ["pepe", "papy", "vieux", "papi"]
+pepe.stopAnsweringWords = ["chut", "tais", "ferme", "gueule", "bouche", "taire", "fermer", "boucle", "fermez", "bouclez", "taisez"]
+
+pepe.initVoice("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\MSTTS_V110_frFR_PaulM", 100)
 
 pepe.loopFunctions = [updateClassement]
 
 pepe.onMessageFunction = onMessage
 pepe.onReactFunction = onReaction
+pepe.sendAnswer = sendAnswer
 
 pepe.botCommands = [
     BotCommand(randomRoles, r"^roles$"),
@@ -301,9 +318,9 @@ pepe.botCommands = [
     BotCommand(giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)"),
     BotCommand(changeRoleColor, r"^colour (?P<roleID>.+)"),
     BotCommand(classement, r"classement"),
-    BotCommand(viens, r"(?:vien[s|t]?.+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+vien[s|t]?)"),
+    BotCommand(viens, r"(?:vien[s|t]?.+(?:pepe|pap[iy])|(?:pepe|pap[iy]).+vien[st]?)"),
     BotCommand(pars, r"par[s|t].+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+par[s|t]"),
-    BotCommand(toogleMode, r"change[s|r]?.+modes?"),
+    BotCommand(toogleMode, r"apprend(re)?s?.+r[ée]ponses?"),
     BotCommand(deleteLastMessage, r"(?:supprime[s|r]?|enl[e|è]ve[r|s]?).+messages?")
 ]
 

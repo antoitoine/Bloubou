@@ -8,6 +8,7 @@ from bot import *
 from dotenv import load_dotenv
 import discord
 import os
+from myUtilities import *
 
 load_dotenv()
 
@@ -40,10 +41,11 @@ gerard = Bot(intents=intents)
 
 
 async def on_message(message):
-    if message.channel.id != GERARD_CHANNEL_ID:
-        return
+    if message.channel.id == GERARD_CHANNEL_ID:
+        print(message.content)
 
-    print(message.content)
+    else:
+        pass
 
 
 async def on_raw_message_delete(payload):

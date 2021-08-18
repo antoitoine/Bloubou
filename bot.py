@@ -14,6 +14,7 @@ from myUtilities import *
 from constants import *
 from dataclasses import dataclass
 from typing import Callable, Awaitable, List
+from datetime import datetime
 
 
 ####################
@@ -43,11 +44,15 @@ class Bot(discord.Client):
         self._guildID = 0
 
         self._botCommands: List[BotCommand] = []
+        self._activated = False
+        self._lastActivation = datetime.now()
 
         self._adminUsersID = []
         self._constantRoles = []
         self._botIds = []
         self._aliases = {}
+        self._botNames = []
+        self._stopAnsweringWords = []
 
         self._loopFunctions = []
         self._onVoiceFunction = None
@@ -56,6 +61,7 @@ class Bot(discord.Client):
         self._onReactFunction = None
         self._onRawMessageDelete = None
         self._onRawMessageEdit = None
+        self._sendAnswer = None
 
         self.engine = pyttsx3.init()
 
@@ -75,18 +81,35 @@ class Bot(discord.Client):
 
     async def on_message(self, message):
         """ Event called when a message is read """
+
         botMessage = message.author.id in self.botIds
 
-        if not botMessage and await self.fetchCommands(message):
+        if not botMessage and await self.fetchCommands(message): # If command sent
             printMessage(message, COMMAND_MESSAGE)
             return
-        if botMessage:
-            printMessage(message, BOT_MESSAGE)
         else:
-            printMessage(message, USER_MESSAGE)
+            # Activation
+            if message.author != self.user:
+                splittedMessage = tc.normalize(message.content).split()
+                if any(x in splittedMessage for x in self.stopAnsweringWords):
+                    self.activated = False
+                elif any(x in splittedMessage for x in self.botNames):
+                    self.activated = True
+
+                sinceLastMessage = (datetime.now() - self._lastActivation).seconds
+                self._lastActivation = datetime.now()
+                if self._activated and sinceLastMessage >= 30:
+                    self._activated = False
+
+            if botMessage:
+                printMessage(message, BOT_MESSAGE)
+            else:
+                printMessage(message, USER_MESSAGE)
 
         if self.onMessageFunction is not None:
             await self.onMessageFunction(message)
+        if self.user != message.author and self.activated and self.sendAnswer is not None:
+            await self.sendAnswer(message)
 
     async def on_voice_state_update(self, member, before, after):
         """ Called when a user enters or leaves any voice channel """
@@ -310,3 +333,35 @@ class Bot(discord.Client):
     @onRawMessageEdit.setter
     def onRawMessageEdit(self, foo):
         self._onRawMessageEdit = foo
+
+    @property
+    def activated(self):
+        return self._activated
+
+    @activated.setter
+    def activated(self, a):
+        self._activated = a
+
+    @property
+    def sendAnswer(self):
+        return self._sendAnswer
+
+    @sendAnswer.setter
+    def sendAnswer(self, foo):
+        self._sendAnswer = foo
+
+    @property
+    def botNames(self):
+        return self._botNames
+
+    @botNames.setter
+    def botNames(self, names):
+        self._botNames = names
+
+    @property
+    def stopAnsweringWords(self):
+        return self._stopAnsweringWords
+
+    @stopAnsweringWords.setter
+    def stopAnsweringWords(self, words):
+        self._stopAnsweringWords = words
