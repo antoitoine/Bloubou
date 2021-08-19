@@ -51,6 +51,8 @@ def genVerbe(cursor, sujet, sujetPluriel):
     if sujet == "Tu":
         if verbe == "est":
             verbe = "es"
+        elif verbe[-1] == "t":
+            verbe = verbe[:-1] + "s"
         else:
             verbe = verbe + "s"
     elif sujet == "Je" and verbe == "a":
@@ -90,6 +92,13 @@ def genAdjectif(cursor, nomPluriel, genreNom):
     return adj
 
 
+def genAdverbe(cursor):
+    """ Returns an adjective """
+    curAdv = executeSQL(cursor, f"SELECT * FROM Juge WHERE type='adverbe' ORDER BY RAND() LIMIT 1")
+    adv = curAdv["mot"]
+    return adv
+
+
 # Phrases
 
 
@@ -114,6 +123,29 @@ def phrase2(cursor, sujet, sujetPluriel):
     return f"{sujet}{verbe} {det} {nom} {adj}"
 
 
+def phrase3(cursor, sujet, sujetPluriel):
+    """ Sujet verbe complément adverbe adjectif """
+    verbe = genVerbe(cursor, sujet, sujetPluriel)
+    if verbe == "ai" : sujet = "J'"
+    (nom, nomPluriel, genreNom) = genNom(cursor)
+    det = genDeterminant(cursor, nomPluriel, genreNom)
+    adj = genAdjectif(cursor, nomPluriel, genreNom)
+    adv = genAdverbe(cursor)
+    if sujet != "J'": sujet = sujet + " "
+    return f"{sujet}{verbe} {det} {nom} {adv} {adj}"
+
+def phrase4(cursor, sujet, sujetPluriel):
+    """ Sujet verbe déterminant adjectif """
+    verbe = genVerbe(cursor, sujet, sujetPluriel)
+    if verbe == "ai" : sujet = "J'"
+    pluriel = random.choice([True, False])
+    genre = random.choice(["feminin", "masculin"])
+    det = genDeterminant(cursor, pluriel, genre)
+    adj = genAdjectif(cursor, pluriel, genre)
+    if sujet != "J'": sujet = sujet + " "
+    return f"{sujet}{verbe} {det} {adj}"
+
+
 async def juger(args, message):
     """ Juges a user """
     sujet = args["nom"]
@@ -129,12 +161,12 @@ async def juger(args, message):
 
     db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
     with db.cursor(dictionary=True) as cursor:
-        aleatoire = random.randint(1, 2)
+        aleatoire = random.randint(1, 4)
         jugement = ""
-        if aleatoire == 1:
-            jugement = phrase1(cursor, sujet, sujetPluriel)
-        elif aleatoire == 2:
-            jugement = phrase2(cursor, sujet, sujetPluriel)
+        if   aleatoire == 1 : jugement = phrase1(cursor, sujet, sujetPluriel)
+        elif aleatoire == 2 : jugement = phrase2(cursor, sujet, sujetPluriel)
+        elif aleatoire == 3 : jugement = phrase3(cursor, sujet, sujetPluriel)
+        elif aleatoire == 4 : jugement = phrase4(cursor, sujet, sujetPluriel)
 
         await message.channel.send(jugement)
 
