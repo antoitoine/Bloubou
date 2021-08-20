@@ -217,10 +217,16 @@ async def toogleMode(args, message):
     apprendreMode = not apprendreMode
 
 
-async def deleteLastMessage(args, message):
-    msg = await pepe.getLastMessage(message.channel)
-    await msg.delete()
-    await message.delete()
+async def deleteMessages(args, message):
+    nbMessages = int(args["nbMessages"])
+    if nbMessages <= 0:
+        await message.channel.send("Combien de messages ?")
+        return
+    if nbMessages > 2 and message.author.id not in pepe.adminIds:
+        await message.channel.send("C'est 2 messages max pour les nuls")
+        return
+    for msg in await message.channel.history(limit=nbMessages + 1).flatten():
+        await msg.delete()
 
 
 @tasks.loop(minutes=5.0)
@@ -301,7 +307,7 @@ async def sendAnswer(message):
 pepe.guildId = SERVER_ID
 pepe.adminIds = [USER_ID_ANTOINE]
 pepe.botNames = ["pepe", "papy", "vieux", "papi"]
-pepe.stopAnsweringWords = ["chut", "tais", "ferme", "gueule", "bouche", "taire", "fermer", "boucle", "fermez", "bouclez", "taisez"]
+pepe.stopAnsweringWords = ["chut", "tais", "ferme", "gueule", "bouche", "taire", "fermer", "boucle", "fermez", "bouclez", "taisez", "tait"]
 
 pepe.initVoice("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\MSTTS_V110_frFR_PaulM", 100)
 
@@ -313,15 +319,15 @@ pepe.sendAnswer = sendAnswer
 
 pepe.botCommands = [
     BotCommand(randomRoles, r"^roles$"),
-    BotCommand(changeName, r"(?:change[r|s]?|modifie[s|r]?|transforme[s|r]?|renomme[s|r]?) (?:(?:le )?(?:nom|pseudo|pr(?:é|e|è)nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)"),
+    BotCommand(changeName, r"(?:change[rs]?|modifie[sr]?|transforme[sr]?|renomme[sr]?) (?:(?:le )?(?:nom|pseudo|pr[éeè]nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)"),
     BotCommand(stopBot, r"^stop$"),
     BotCommand(giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)"),
     BotCommand(changeRoleColor, r"^colour (?P<roleID>.+)"),
     BotCommand(classement, r"classement"),
-    BotCommand(viens, r"(?:vien[s|t]?.+(?:pepe|pap[iy])|(?:pepe|pap[iy]).+vien[st]?)"),
-    BotCommand(pars, r"par[s|t].+(?:pepe|pap[i|y])|(?:pepe|pap[i|y]).+par[s|t]"),
+    BotCommand(viens, r"(?:vien[st]?.+(?:pepe|pap[iy])|(?:pepe|pap[iy]).+vien[st]?)"),
+    BotCommand(pars, r"par[st].+(?:pepe|pap[iy])|(?:pepe|pap[iy]).+par[st]"),
     BotCommand(toogleMode, r"apprend(re)?s?.+r[ée]ponses?"),
-    BotCommand(deleteLastMessage, r"(?:supprime[s|r]?|enl[e|è]ve[r|s]?).+messages?")
+    BotCommand(deleteMessages, r"(?:supprime[sr]?|enl[eè]ve[rs]?) +(?P<nbMessages>[0-9]+) +messages?")
 ]
 
 pepe.run(os.getenv("TOKEN_PEPE"))
