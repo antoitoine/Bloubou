@@ -82,7 +82,7 @@ class Bot(discord.Client):
 
     async def on_message(self, message):
         """ Event called when a message is read """
-
+        message.content = re.sub(r"’", "'", message.content)
         botMessage = message.author.id in self.botIds
 
         if not botMessage and await self.fetchCommands(message): # If command sent

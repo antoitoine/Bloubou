@@ -41,6 +41,9 @@ lastAuthor = None
 
 apprendreMode = False
 
+lastMessagesDeleted = {}
+channelsAllowSuppression = [878414426741542942, 878414372223991850, 872874273579081748, 872875407442063360]
+
 
 #################
 # PEPE COMMANDS #
@@ -132,7 +135,6 @@ async def classement(args, message):
 
 def enregistrerReponse(question, reponse):
     reponse = re.sub(r"^ *(p[ée]p[ée]|pap[yi]|(le )?vieux) *", "", reponse, flags=re.IGNORECASE)
-    print(question, ":", reponse)
     if len(reponse) == 0 or len(reponse) > 64 or len(question) == 0 or len(question) > 16:
         return
     db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
@@ -217,10 +219,31 @@ async def deleteMessages(args, message):
     if nbMessages <= 0:
         await message.channel.send("Combien de messages ?")
         return
-    if nbMessages > 2 and message.author.id not in pepe.adminIds:
+    elif nbMessages > 2 and message.author.id not in pepe.adminIds:
         await message.channel.send("C'est 2 messages max pour les nuls")
         return
+    elif message.channel.id not in channelsAllowSuppression:
+        await message.channel.send("Tu ne peux pas supprimer de messages ici")
+        return
+    elif message.author.id in lastMessagesDeleted and message.author.id not in pepe.adminIds:
+        tempsRestant = 60 - (datetime.now() - lastMessagesDeleted[message.author.id]).seconds
+        if tempsRestant > 0:
+            await message.channel.send(f"Attends encore {tempsRestant} secondes")
+            return
+    lastMessagesDeleted[message.author.id] = datetime.now()
     await message.channel.purge(limit=nbMessages + 1)
+
+
+async def pileFace(args, message):
+    with message.channel.typing():
+        await asyncio.sleep(3)
+    reponse = random.choice(["Pile !", "Face !"])
+    await message.channel.send(reponse)
+    if random.randint(1, 3) == 1:
+        with message.channel.typing():
+            await asyncio.sleep(1)
+        await message.channel.send("Euh non, face !" if reponse == "Pile !" else "En fait c'était pile !")
+
 
 
 @tasks.loop(hours=24.0)
@@ -318,15 +341,16 @@ pepe.sendAnswer = sendAnswer
 
 pepe.botCommands = [
     BotCommand(randomRoles, r"^roles$", adminMode=True),
-    BotCommand(changeName, r"(?:change[rs]?|modifie[sr]?|transforme[sr]?|renomme[sr]?) (?:(?:le )?(?:nom|pseudo|pr[éeè]nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)"),
+    BotCommand(changeName, r"(?:change[rs]?|modifie[sr]?|transforme[sr]?|renomme[sr]?) +(?:(?:le +)?(?:nom|pseudo|pr[éeè]nom) +(?:de +|d' *)?)?(?P<last>.+) +(?:en|pour) +(?P<new>.+)"),
     BotCommand(stopBot, r"^stop$", adminMode=True),
     BotCommand(giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)", adminMode=True),
     BotCommand(changeRoleColor, r"^colour (?P<roleID>.+)", adminMode=True),
-    BotCommand(classement, r"classement", adminMode=True),
-    BotCommand(viens, r"(?:vien[st]?.+(?:pepe|pap[iy])|(?:pepe|pap[iy]).+vien[st]?)"),
-    BotCommand(pars, r"par[st].+(?:pepe|pap[iy])|(?:pepe|pap[iy]).+par[st]"),
-    BotCommand(toogleMode, r"apprend(re)?s?.+r[ée]ponses?"),
-    BotCommand(deleteMessages, r"(?:supprime[sr]?|enl[eè]ve[rs]?) +(?P<nbMessages>[0-9]+) +messages?")
+    BotCommand(classement, r"^classement$", adminMode=True),
+    BotCommand(viens, r"(?=.*(?:vien[ts]|ram[eè]nes?|rejoint?s?|come)).*(?=.*(?:p[éeè]p[éeè]|pap[yi]|vieux)).+"),
+    BotCommand(pars, r"(?=.*(?:par[ts]|partir|bouge[rs]?|d[eéè]gage[rs]?|d[éeè]connecte[rs]?)).*(?=.*(?:p[éeè]p[éeè]|pap[yi]|vieux)).+"),
+    BotCommand(toogleMode, r"apprend(re)?s?.+(r[ée]ponses?|mots?|trucs?|phrases?|choses?)"),
+    BotCommand(deleteMessages, r"(?:supprime[sr]?|enl[eè]ve[rs]?) +(?P<nbMessages>[0-9]+) +messages?"),
+    BotCommand(pileFace, r"(?=.*face).*(?=.*pile).+")
 ]
 
 pepe.run(os.getenv("TOKEN_PEPE"))
