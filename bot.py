@@ -10,6 +10,7 @@ import pyttsx3
 
 import textComputing as tc
 
+from gtts import gTTS
 from myUtilities import *
 from constants import *
 from dataclasses import dataclass
@@ -172,8 +173,8 @@ class Bot(discord.Client):
 
     def readVoiceMessage(self, message):
 
-        self.engine.save_to_file(message, "tmp.mp3")
-        self.engine.runAndWait()
+        tts = gTTS(message, lang="fr")
+        tts.save('tmp.mp3')
         voiceClient = self.get_guild(self._guildID).voice_client
         voiceClient.play(discord.FFmpegPCMAudio(source="tmp.mp3"))
 

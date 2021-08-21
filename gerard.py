@@ -58,7 +58,7 @@ async def on_message(message):
 
         with db.cursor() as cursor:
             print(question, reponse, message.id)
-            cursor.execute(f"INSERT INTO Gerard (question, reponse, idMessage) VALUES ('{question}', '{reponse}', '{message.id}')")
+            cursor.execute(f"INSERT INTO Gerard (question, reponse, idMessage) VALUES (\"{question}\", \"{reponse}\", '{message.id}')")
         db.commit()
     elif gerard.activated:
         question = tc.normalize(message.content)
@@ -67,8 +67,9 @@ async def on_message(message):
             questionsConnues = []
             for row in cursor.fetchall():
                 questionsConnues.append(row["question"])
-            questionProche = difflib.get_close_matches(question, questionsConnues, cutoff=0)[0]
-            cursor.execute(f"SELECT * FROM Gerard WHERE question='{questionProche}' ORDER BY RAND() LIMIT 1")
+            questionProche = difflib.get_close_matches(question, questionsConnues, cutoff=0)
+            print(questionProche)
+            cursor.execute(f"SELECT * FROM Gerard WHERE question='{questionProche[0]}' ORDER BY RAND() LIMIT 1")
             reponse = cursor.fetchall()[0]["reponse"]
             async with message.channel.typing():
                 await asyncio.sleep(1)

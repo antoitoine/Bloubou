@@ -17,8 +17,7 @@ ytdl_format_options = {
 }
 
 ffmpeg_options = {
-    'options': '-vn',
-    'executable': 'D:\\ffmpeg\\bin\\ffmpeg.exe'
+    'options': '-vn'
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)

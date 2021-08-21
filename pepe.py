@@ -26,6 +26,7 @@ USER_ID_ANTOINE = 393762112884965389
 SERVER_ID = 871155691686088714
 CHANNEL_ID_CLASSEMENT = 872486010569760828
 MESSAGE_ID_CLASSEMENT = 872594120324038726
+CHANNEL_ID_GERARD = 872484253764579338
 
 
 ################
@@ -149,7 +150,7 @@ def enregistrerReponse(question, reponse):
 async def onMessage(message):
     """ Learns answers and updates classement """
 
-    if len(message.content) >= 256:
+    if len(message.content) >= 256 or message.channel.id == CHANNEL_ID_GERARD:
         return
 
     global lastMessage, lastAuthor
@@ -254,7 +255,7 @@ async def updateRoles():
 @tasks.loop(minutes=5.0)
 async def updateClassement():
     """ Updates the classement's message """
-
+    print("classement")
     classementChannel = discord.utils.get(pepe.guild.channels, id=CHANNEL_ID_CLASSEMENT)
     messageClassement = await classementChannel.fetch_message(MESSAGE_ID_CLASSEMENT)
     content = "**SUPER CLASSEMENT DE LA MORT**\n"
@@ -276,6 +277,7 @@ async def updateClassement():
             posClassement += 1
 
     await messageClassement.edit(content=content)
+    print("classement done")
 
 
 async def onReaction(reaction, user, last):
@@ -331,7 +333,7 @@ pepe.adminIds = [USER_ID_ANTOINE]
 pepe.botNames = ["pepe", "papy", "vieux", "papi"]
 pepe.stopAnsweringWords = ["chut", "tais", "ferme", "gueule", "bouche", "taire", "fermer", "boucle", "fermez", "bouclez", "taisez", "tait"]
 
-pepe.initVoice("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\MSTTS_V110_frFR_PaulM", 100)
+pepe.initVoice("french", 100)
 
 pepe.loopFunctions = [updateClassement, updateRoles]
 
@@ -341,7 +343,7 @@ pepe.sendAnswer = sendAnswer
 
 pepe.botCommands = [
     BotCommand(randomRoles, r"^roles$", adminMode=True),
-    BotCommand(changeName, r"(?:change[rs]?|modifie[sr]?|transforme[sr]?|renomme[sr]?) +(?:(?:le +)?(?:nom|pseudo|pr[éeè]nom) +(?:de +|d' *)?)?(?P<last>.+) +(?:en|pour) +(?P<new>.+)"),
+    BotCommand(changeName, r"(change[rs]?|modifie[rs]?|renomme[rs]?|transforme[rs]?) *(le +(pseudo|pr[ée]nom|nom) +(de |d'))?(?P<last>.+) +en +(?P<new>.+)"),
     BotCommand(stopBot, r"^stop$", adminMode=True),
     BotCommand(giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)", adminMode=True),
     BotCommand(changeRoleColor, r"^colour (?P<roleID>.+)", adminMode=True),
