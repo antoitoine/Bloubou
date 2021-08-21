@@ -27,6 +27,7 @@ class BotCommand:
     command: Callable[[list, discord.Message], Awaitable[None]]
     regex: str
     channelId: int = 0
+    adminMode: bool = False
 
 
 #############
@@ -220,6 +221,8 @@ class Bot(discord.Client):
         """ Reads and executes commands, returns False if no command found """
         for iCommand in range(len(self.botCommands)):
             if self.botCommands[iCommand].channelId != 0 and message.channel.id != self.botCommands[iCommand].channelId:
+                continue
+            elif self.botCommands[iCommand].adminMode and message.author.id not in self.adminIds:
                 continue
             regexResult = re.search(self.botCommands[iCommand].regex, message.content + '\n', re.IGNORECASE)
             if regexResult is not None:

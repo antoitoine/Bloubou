@@ -56,9 +56,6 @@ async def changeName(args, message):
 
 async def randomRoles(args, message):
     """ Distributes random role to everyone """
-    if message.author.id not in pepe.adminIds:
-        return
-
     rolesID = {
         871166312477503488: True,
         871166956408016946: True,
@@ -78,7 +75,7 @@ async def randomRoles(args, message):
         871168483923230771: True
     }
 
-    for member in message.guild.members:
+    for member in pepe.guild.members:
         if member.id in pepe.botIds:
             continue
         printMessage(f"Removing roles from {member}", DEBUG_MESSAGE, True)
@@ -103,7 +100,7 @@ async def randomRoles(args, message):
         # Give role
         if newRoleID > 0:
             printMessage(f"{member} gets the role id {newRoleID}", DEBUG_MESSAGE, True)
-            await member.add_roles(discord.utils.get(message.guild.roles, id=newRoleID))
+            await member.add_roles(discord.utils.get(pepe.guild.roles, id=newRoleID))
         else:
             printMessage(f"There is no role available", ERROR_MESSAGE, True)
     printMessage("Roles Done", DEBUG_MESSAGE, True)
@@ -111,8 +108,6 @@ async def randomRoles(args, message):
 
 async def stopBot(args, message):
     """ Shutdowns the bot """
-    if message.author.id not in pepe.adminIds:
-        return
     await pepe.shutdown()
 
 
@@ -138,7 +133,7 @@ async def classement(args, message):
 def enregistrerReponse(question, reponse):
     reponse = re.sub(r"^ *(p[ée]p[ée]|pap[yi]|(le )?vieux) *", "", reponse, flags=re.IGNORECASE)
     print(question, ":", reponse)
-    if len(reponse) == 0:
+    if len(reponse) == 0 or len(reponse) > 64 or len(question) == 0 or len(question) > 16:
         return
     db = connectDatabase(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
     with db.cursor() as cursor:
@@ -225,8 +220,12 @@ async def deleteMessages(args, message):
     if nbMessages > 2 and message.author.id not in pepe.adminIds:
         await message.channel.send("C'est 2 messages max pour les nuls")
         return
-    for msg in await message.channel.history(limit=nbMessages + 1).flatten():
-        await msg.delete()
+    await message.channel.purge(limit=nbMessages + 1)
+
+
+@tasks.loop(hours=24.0)
+async def updateRoles():
+    await randomRoles({}, None)
 
 
 @tasks.loop(minutes=5.0)
@@ -311,19 +310,19 @@ pepe.stopAnsweringWords = ["chut", "tais", "ferme", "gueule", "bouche", "taire",
 
 pepe.initVoice("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\MSTTS_V110_frFR_PaulM", 100)
 
-pepe.loopFunctions = [updateClassement]
+pepe.loopFunctions = [updateClassement, updateRoles]
 
 pepe.onMessageFunction = onMessage
 pepe.onReactFunction = onReaction
 pepe.sendAnswer = sendAnswer
 
 pepe.botCommands = [
-    BotCommand(randomRoles, r"^roles$"),
+    BotCommand(randomRoles, r"^roles$", adminMode=True),
     BotCommand(changeName, r"(?:change[rs]?|modifie[sr]?|transforme[sr]?|renomme[sr]?) (?:(?:le )?(?:nom|pseudo|pr[éeè]nom) (?:de |d')?)?(?P<last>.+) (?:en|pour) (?P<new>.+)"),
-    BotCommand(stopBot, r"^stop$"),
-    BotCommand(giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)"),
-    BotCommand(changeRoleColor, r"^colour (?P<roleID>.+)"),
-    BotCommand(classement, r"classement"),
+    BotCommand(stopBot, r"^stop$", adminMode=True),
+    BotCommand(giveRole, r"^role (?P<roleID>.+) a (?P<user>.+)", adminMode=True),
+    BotCommand(changeRoleColor, r"^colour (?P<roleID>.+)", adminMode=True),
+    BotCommand(classement, r"classement", adminMode=True),
     BotCommand(viens, r"(?:vien[st]?.+(?:pepe|pap[iy])|(?:pepe|pap[iy]).+vien[st]?)"),
     BotCommand(pars, r"par[st].+(?:pepe|pap[iy])|(?:pepe|pap[iy]).+par[st]"),
     BotCommand(toogleMode, r"apprend(re)?s?.+r[ée]ponses?"),
